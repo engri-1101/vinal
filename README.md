@@ -1,1 +1,2 @@
-empty README
+# vinal (VIsualize Network ALgorithms)
+

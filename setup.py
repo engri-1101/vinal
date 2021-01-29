@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="tmp",
+    name="vinal",
     version="0.0.1",
     author="Henry Robbins",
     author_email="hwr26@cornell.edu",
