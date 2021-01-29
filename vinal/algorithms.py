@@ -34,7 +34,10 @@ def dijkstras(G, s=0, iterations=False):
     def create_table(dist, prev, S):
         """Return table for this iteration."""
         df = pd.DataFrame({'label': dist.copy(), 'prev': prev.copy()})
-        df['label'] = ['%.1f' % df['label'][i] + '*'*(i in S) for i in range(len(df['label']))]
+        df['label'] = df['label'].apply(lambda x: '%.1f' % x)
+        # asterisk on label of 'settled nodes'
+        marks = pd.Series(['*'*(i in S) for i in range(len(df['label']))])
+        df['label'] = df['label'].astype(str) + marks.astype(str)
         df['prev'] = df['prev'].apply(lambda x: '-' if math.isnan(x) else int(x))
         df = df.T
         df.columns = df.columns.astype(str)
@@ -92,7 +95,11 @@ def prims(G, i, iterations=False):
     unvisited.remove(i)
     visited = [i]
     while len(unvisited) > 0:
-        possible = {(u,v): G[u][v]['weight'] for u in visited for v in unvisited if G.has_edge(u,v)}
+        possible = {}
+        for u in visited:
+            for v in unvisited:
+                if G.has_edge(u,v):
+                    possible[(u,v)] = G[u][v]['weight']
         u,v = min(possible, key=possible.get)
         unvisited.remove(v)
         visited.append(v)
@@ -135,7 +142,7 @@ def reverse_kruskals(G, iterations=False):
         iterations (bool): True iff all iterations should be returned.
     """
     edges = nx.get_edge_attributes(G,'weight')
-    edges = list(dict(sorted(edges.items(), key=lambda item: item[1], reverse=True)))
+    edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
     G_prime = nx.Graph()
     for i in range(len(G)):
         G_prime.add_node(i)
@@ -225,7 +232,9 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
 
     # choose next node from unvisited
     while len(unvisited) > 0:
-        d = {u: min([G[u][v]['weight'] for v in np.unique(tour)]) for u in unvisited}
+        d = {}
+        for u in unvisited:
+            d[u] = min([G[u][v]['weight'] for v in np.unique(tour)])
         if nearest:
             min_val = min(d.values())
             possible = [k for k, v in d.items() if v == min_val]
@@ -235,9 +244,12 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
         next_node = possible[randrange(len(possible))]
 
         # insert node into tour at minimum cost
-        increase = [G[tour[i]][next_node]['weight']
-                    + G[next_node][tour[i+1]]['weight']
-                    - G[tour[i]][tour[i+1]]['weight'] for i in range(len(tour)-1)]
+        increase = []
+        for i in range(len(tour)-1):
+            u, v = tour[i], tour[i+1]
+            cost_before = G[u][v]['weight']
+            cost_after = G[u][next_node]['weight'] + G[next_node][v]['weight']
+            increase.append(cost_after - cost_before)
         insert_index = increase.index(min(increase))+1
         tour.insert(insert_index, next_node)
         unvisited.remove(next_node)

@@ -22,6 +22,27 @@ from bokeh.layouts import row, gridplot
 from bokeh.models import (HoverTool, TapTool, ColumnDataSource, LabelSet,
                           Button, CustomJS)
 
+
+# Color Theme -- Using Google's Material Design Color System
+# https://material.io/design/color/the-color-system.html
+
+PRIMARY_COLOR = '#1565c0'
+PRIMARY_LIGHT_COLOR = '#5e92f3'
+PRIMARY_DARK_COLOR = '#003c8f'
+SECONDARY_COLOR = '#d50000'
+SECONDARY_LIGHT_COLOR = '#ff5131'
+SECONDARY_DARK_COLOR = '#9b0000'
+PRIMARY_FONT_COLOR = '#ffffff'
+SECONDARY_FONT_COLOR = '#ffffff'
+# Grayscale
+TERTIARY_COLOR = '#DFDFDF'
+TERTIARY_LIGHT_COLOR = 'white'  # Jupyter Notebook: white, Sphinx: #FCFCFC
+TERTIARY_DARK_COLOR = '#404040'
+
+NODE_SIZE = 11
+NODE_LINE_WIDTH = 3
+LINE_WIDTH = 5
+
 # --------------------
 # JAVASCRIPT CONSTANTS
 # --------------------
@@ -67,11 +88,11 @@ var in_tree = source.data['nodes'][iteration]
 
 for (let i = 0; i < nodes_src.data['line_color'].length ; i++) {
     if (in_tree.includes(i)) {
-        nodes_src.data['fill_color'][i] = 'steelblue'
-        nodes_src.data['line_color'][i] = 'steelblue'
+        nodes_src.data['fill_color'][i] = '""" + PRIMARY_DARK_COLOR + """'
+        nodes_src.data['line_color'][i] = '""" + PRIMARY_DARK_COLOR + """'
     } else {
-        nodes_src.data['fill_color'][i] = '#EA8585'
-        nodes_src.data['line_color'][i] = '#EA8585'
+        nodes_src.data['fill_color'][i] = '""" + PRIMARY_LIGHT_COLOR + """'
+        nodes_src.data['line_color'][i] = '""" + PRIMARY_DARK_COLOR + """'
     }
 }
 
@@ -149,16 +170,17 @@ def _set_edge_positions(G):
 def _set_graph_colors(G, edges=[], show_all_edges=True):
     """Add node/edge attribute with color data. Highlight edges."""
     for u in G.nodes:
-        G.nodes[u]['line_color'] = '#EA8585'
-        G.nodes[u]['fill_color'] = '#EA8585'
+        G.nodes[u]['line_color'] = PRIMARY_DARK_COLOR
+        G.nodes[u]['line_width'] = NODE_LINE_WIDTH
+        G.nodes[u]['fill_color'] = PRIMARY_LIGHT_COLOR
     for u,v in G.edges:
-        G[u][v]['line_color'] = 'lightgray'
+        G[u][v]['line_color'] = TERTIARY_COLOR
         if show_all_edges:
             G[u][v]['visible'] = True
         else:
             G[u][v]['visible'] = False
     for u,v in edges:
-        G[u][v]['line_color'] = 'black'
+        G[u][v]['line_color'] = TERTIARY_DARK_COLOR
         G[u][v]['visible'] = True
 
 
@@ -187,15 +209,19 @@ def _graph_glyphs(plot, nodes_src, edges_src, labels_src,
     """Add and return glyphs for nodes and edges"""
     edges_glyph = plot.multi_line(xs='xs', ys='ys',
                                   line_color='line_color',
-                                  hover_line_color='black',
-                                  line_width=6, nonselection_line_alpha=1,
+                                  line_cap='round',
+                                  hover_line_color=TERTIARY_DARK_COLOR,
+                                  line_width=LINE_WIDTH,
+                                  nonselection_line_alpha=1,
                                   visible=show_edges,
                                   alpha='visible',
                                   level='image',
                                   source=edges_src)
-    nodes_glyph = plot.circle(x='x', y='y', size=12, level='glyph',
+    nodes_glyph = plot.circle(x='x', y='y', size=NODE_SIZE, level='glyph',
                               line_color='line_color', fill_color='fill_color',
-                              nonselection_fill_alpha=1, source=nodes_src)
+                              line_width='line_width',
+                              nonselection_fill_alpha=1,
+                              nonselection_line_alpha=1, source=nodes_src)
 
     labels = LabelSet(x='x', y='y', text='text', render_mode='canvas',
                       visible=show_labels, source=labels_src)
@@ -265,8 +291,9 @@ def plot_create(G, create, width=900, height=500, image=None):
     cost = Div(text='0.0', width=int(width/3), align='center')
     error_msg = Div(text='', width=int(width/3), align='center')
     clicked = Div(text='[]', width=int(width/3), align='center')
-    plot.line(x='edges_x', y='edges_y', line_color='black', line_width=6,
-              level='image', source=tour_src)
+    plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
+              line_cap='round', line_width=LINE_WIDTH, level='image',
+              source=tour_src)
     edges_glyph, nodes_glyph = _graph_glyphs(plot, nodes_src, edges_src,
                                              labels_src,
                                              show_labels=show_labels)
@@ -288,16 +315,14 @@ def plot_create(G, create, width=900, height=500, image=None):
 
     if (!tree_nodes.includes(u) || !tree_nodes.includes(v)) {
         if (!tree_nodes.includes(v)) {
-            tree_nodes.push(v)
-            nodes_src.data['line_color'][v] = 'steelblue'
-            nodes_src.data['fill_color'][v] = 'steelblue'
+            nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+            nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
         }
         if (!tree_nodes.includes(u)) {
-            tree_nodes.push(u)
-            nodes_src.data['line_color'][u] = 'steelblue'
-            nodes_src.data['fill_color'][u] = 'steelblue'
+            nodes_src.data['fill_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
+            nodes_src.data['line_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
         }
-        edges_src.data['line_color'][i] = 'black'
+        edges_src.data['line_color'][i] = '""" + TERTIARY_DARK_COLOR + """'
         tree_edges.push([u,v])
         var prev_cost = parseFloat(cost.text)
         cost.text = (prev_cost + w).toFixed(1)
@@ -312,7 +337,8 @@ def plot_create(G, create, width=900, height=500, image=None):
 
     clicked.text = '['
     for (let i = 0; i < tree_edges.length; i++) {
-        clicked.text = clicked.text.concat('(').concat(tree_edges[i].join(',')).concat(')')
+        var edge_str = tree_edges[i].join(',')
+        clicked.text = clicked.text.concat('(').concat(edge_str).concat(')')
         if (!(i == tree_edges.length - 1)) {
             clicked.text = clicked.text.concat(',')
         }
@@ -349,8 +375,8 @@ def plot_create(G, create, width=900, height=500, image=None):
         clicked.text = '['.concat(tour.join(',')).concat(']')
 
         // highlight new node
-        nodes_src.data['line_color'][v] = 'steelblue'
-        nodes_src.data['fill_color'][v] = 'steelblue'
+        nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+        nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
 
         // highlight new edge
         tour_src.data['edges_x'].push(nodes_src.data['x'][v])
@@ -418,9 +444,6 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
 
     _set_edge_positions(G)
     _set_graph_colors(G)
-    for u in G.nodes:
-        G.nodes[u]['line_color'] = '#EA8585'
-        G.nodes[u]['fill_color'] = '#EA8585'
 
     # build source data dictionary
     k = 0  # number of iterations
@@ -476,6 +499,13 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
     args_dict = {}
     nodes_src, edges_src, labels_src = _graph_sources(G)
     args_dict['nodes_src'] = nodes_src
+
+    if nodes is not None:
+        for i in range(len(nodes_src.data['line_color'])):
+            if i in nodes[0]:
+                nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
+                nodes_src.data['fill_color'][i] = PRIMARY_DARK_COLOR
+
     source = ColumnDataSource(data=source_data)
     args_dict['source'] = source
 
@@ -493,8 +523,9 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
     if edges is not None:
         edge_subset_src = ColumnDataSource(data={'xs': edge_xs[0],
                                                  'ys': edge_ys[0]})
-        plot.multi_line('xs', 'ys', line_color='black', line_width=6,
-                        level='underlay', source=edge_subset_src)
+        plot.multi_line('xs', 'ys', line_color=TERTIARY_DARK_COLOR,
+                        line_width=LINE_WIDTH, level='underlay',
+                        line_cap='round', source=edge_subset_src)
         args_dict['edge_subset_src'] = edge_subset_src
 
     if costs is not None:
@@ -503,8 +534,9 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
 
     if tables is not None:
         table_src = ColumnDataSource(data=tables[0])
-        columns = ([TableColumn(field='index', title='')] +
-                   [TableColumn(field=str(i), title=str(i)) for i in range(len(tables[0])-1)])
+        columns = [TableColumn(field='index', title='')]
+        for i in range(len(tables[0])-1):
+            columns.append(TableColumn(field=str(i), title=str(i)))
         table = DataTable(source=table_src, columns=columns, height=80,
                           width=width, background='white', index_position=None,
                           editable=False, reorderable=False, sortable=False,
@@ -517,11 +549,12 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
                                            'swaps_after_x': swaps_after_x[0],
                                            'swaps_after_y': swaps_after_y[0]})
         plot.multi_line(xs='swaps_before_x', ys='swaps_before_y',
-                        line_color='red', line_width=6, level='overlay',
-                        source=swaps_src)
+                        line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
+                        line_cap='round', level='underlay', source=swaps_src)
         plot.multi_line(xs='swaps_after_x', ys='swaps_after_y',
-                        line_color='#90D7F6', line_width=6, level='overlay',
-                        source=swaps_src)
+                        line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
+                        line_cap='round', level='underlay',
+                        line_dash=[10,12], source=swaps_src)
         args_dict['swaps_src'] = swaps_src
 
     # Javascript
@@ -544,10 +577,10 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         prev_btn_code += SWAPS_UPDATE
 
     # buttons
-    next_button = Button(label="Next", button_type="success",
+    next_button = Button(label="Next", button_type="primary",
                          width_policy='fit', sizing_mode='scale_width')
     next_button.js_on_click(CustomJS(args=args_dict, code=next_btn_code))
-    prev_button = Button(label="Previous", button_type="success",
+    prev_button = Button(label="Previous", button_type="primary",
                          width_policy='fit', sizing_mode='scale_width')
     prev_button.js_on_click(CustomJS(args=args_dict, code=prev_btn_code))
 
@@ -596,7 +629,9 @@ def plot_mst_algorithm(G, alg, i=0, width=900, height=500):
         edges = kruskals(G, iterations=True)
     elif alg == 'reverse_kruskals':
         edges = reverse_kruskals(G, iterations=True)
-    nodes = [list(set([item for sublist in edge for item in sublist])) for edge in edges]
+    nodes = []
+    for edge in edges:
+        nodes.append(list(set([item for sublist in edge for item in sublist])))
     costs = [spanning_tree_cost(G, tree) for tree in edges]
     plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
                           width=width, height=height)
@@ -625,6 +660,6 @@ def plot_tsp_heuristic(G, alg, initial, width=900, height=500, image=None):
     nodes = tours
     edges = [[(tour[i], tour[i+1]) for i in range(len(tour)-1)] for tour in tours]
     costs = [tour_cost(G, tour) for tour in tours]
-    plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs, swaps=swaps,
-                          show_edges=False, show_labels=False, width=width,
-                          height=height, image=image)
+    plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
+                          swaps=swaps, show_edges=False, show_labels=False,
+                          width=width, height=height, image=image)
