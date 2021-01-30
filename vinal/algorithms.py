@@ -144,7 +144,7 @@ def reverse_kruskals(G, iterations=False):
         iterations (bool): True iff all iterations should be returned.
     """
     edges = nx.get_edge_attributes(G,'weight')
-    edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
+    edges = list(dict(sorted(edges.items(), key=lambda item: item[1], reverse=True)))
     G_prime = nx.Graph()
     for i in range(len(G)):
         G_prime.add_node(i)
