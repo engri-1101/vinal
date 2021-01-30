@@ -124,7 +124,7 @@ def _graph_range(x, y):
     return min_x, max_x, min_y, max_y
 
 
-def _blank_plot(G, plot_width, plot_height, image=None):
+def _blank_plot(G, plot_width=None, plot_height=None, image=None):
     """Return a blank bokeh plot."""
     if image is not None:
         im = Image.open(image)
@@ -137,8 +137,8 @@ def _blank_plot(G, plot_width, plot_height, image=None):
     plot = figure(x_range=(min_x, max_x),
                   y_range=(min_y, max_y),
                   title="",
-                  plot_width=plot_width,
-                  plot_height=plot_height)
+                  plot_width=400 if plot_width is None else plot_width,
+                  plot_height=400 if plot_height is None else plot_height)
     plot.toolbar.logo = None
     plot.toolbar_location = None
     plot.xgrid.grid_line_color = None
@@ -236,7 +236,7 @@ def _graph_glyphs(plot, nodes_src, edges_src, labels_src,
 
 
 def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
-               width=900, height=500, image=None):
+               width=None, height=None, image=None):
     """Plot the graph G.
 
     Args:
@@ -264,7 +264,7 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
     show(grid)
 
 
-def plot_create(G, create, width=900, height=500, image=None):
+def plot_create(G, create, width=None, height=None, image=None):
     """Plot a graph in which you can either create a tour or spanning tree.
 
     Args:
@@ -294,9 +294,9 @@ def plot_create(G, create, width=900, height=500, image=None):
                                       'edges_y': []})
     G_matrix = nx.adjacency_matrix(G).todense().tolist()
     cost_matrix = ColumnDataSource(data={'G': G_matrix})
-    cost = Div(text='0.0', width=int(width/3), align='center')
-    error_msg = Div(text='', width=int(width/3), align='center')
-    clicked = Div(text='[]', width=int(width/3), align='center')
+    cost = Div(text='0.0', width=int(plot.plot_width/3), align='center')
+    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
+    clicked = Div(text='[]', width=int(plot.plot_width/3), align='center')
     plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
               line_cap='round', line_width=LINE_WIDTH, level='image',
               source=tour_src)
@@ -435,7 +435,7 @@ def plot_create(G, create, width=900, height=500, image=None):
 
 def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
                           swaps=None, show_edges=True, show_labels=True,
-                          width=900, height=500, image=None):
+                          width=None, height=None, image=None):
     """Plot the graph G with iterations of edges, nodes, and tables.
 
     Args:
@@ -515,9 +515,9 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
     source = ColumnDataSource(data=source_data)
     args_dict['source'] = source
 
-    n = Div(text='0', width=width, align='center')
-    k = Div(text=str(k), width=width, align='center')
-    done = Div(text='', width=int(width/2), align='center')
+    n = Div(text='0', width=plot.plot_width, align='center')
+    k = Div(text=str(k), width=plot.plot_width, align='center')
+    done = Div(text='', width=int(plot.plot_width/2), align='center')
     args_dict['n'] = n
     args_dict['k'] = k
     args_dict['done'] = done
@@ -535,7 +535,9 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         args_dict['edge_subset_src'] = edge_subset_src
 
     if costs is not None:
-        cost = Div(text=str(costs[0]), width=int(width/2), align='center')
+        cost = Div(text=str(costs[0]),
+                   width=int(plot.plot_width/2),
+                   align='center')
         args_dict['cost'] = cost
 
     if tables is not None:
@@ -602,14 +604,15 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         layout.insert(1, [table])
 
     grid = gridplot(layout,
-                    plot_width=width, plot_height=height,
+                    plot_width=plot.plot_width,
+                    plot_height=plot.plot_height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
     show(grid)
 
 
-def plot_dijkstras(G, source=0, width=900, height=500):
+def plot_dijkstras(G, source=0, width=None, height=None):
     """Plot Dijkstra's algorithm running on G.
 
     Args:
@@ -621,7 +624,7 @@ def plot_dijkstras(G, source=0, width=900, height=500):
                           width=width, height=height)
 
 
-def plot_mst_algorithm(G, alg, i=0, width=900, height=500):
+def plot_mst_algorithm(G, alg, i=0, width=None, height=None):
     """Plot the MST algorithm running on G.
 
     Args:
@@ -643,7 +646,7 @@ def plot_mst_algorithm(G, alg, i=0, width=900, height=500):
                           width=width, height=height)
 
 
-def plot_tsp_heuristic(G, alg, initial, width=900, height=500, image=None):
+def plot_tsp_heuristic(G, alg, initial, width=None, height=None, image=None):
     """Plot the TSP heuristic running on G.
 
     Args:
@@ -655,8 +658,12 @@ def plot_tsp_heuristic(G, alg, initial, width=900, height=500, image=None):
     swaps = None
     if alg == 'random_neighbor':
         tours = neighbor(G, initial=initial, nearest=False, iterations=True)
+        if len(tours) > 2:
+            del tours[-2]
     elif alg == 'nearest_neighbor':
         tours = neighbor(G, initial=initial, nearest=True, iterations=True)
+        if len(tours) > 2:
+            del tours[-2]
     elif alg == 'nearest_insertion':
         tours = insertion(G, initial=initial, nearest=True, iterations=True)
     elif alg == 'furthest_insertion':
@@ -669,3 +676,4 @@ def plot_tsp_heuristic(G, alg, initial, width=900, height=500, image=None):
     plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
                           swaps=swaps, show_edges=False, show_labels=False,
                           width=width, height=height, image=image)
+    return tours[-1]

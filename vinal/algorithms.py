@@ -5,8 +5,10 @@ This module contains implementations of various graph algorithms.
 
 __author__ = 'Henry Robbins'
 __all__ = ['dijkstras', 'prims', 'kruskals', 'reverse_kruskals',
-           'spanning_tree_cost', 'neighbor', 'insertion', 'two_opt',
-           'solve_tsp', 'optimal_tour', 'tour_cost']
+           'spanning_tree_cost', 'neighbor', 'random_neighbor',
+           'nearest_neighbor', 'insertion', 'nearest_insertion',
+           'furthest_insertion' 'two_opt', 'solve_tsp', 'optimal_tour',
+           'edges_in', 'tour_cost']
 
 
 import math
@@ -212,6 +214,26 @@ def neighbor(G, initial=0, nearest=True, iterations=False):
     return tours if iterations else tour
 
 
+def random_neighbor(G, initial=0):
+    """Run the random neighbor heuristic on G from the initial node.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        intial (int): index of the node to start from.
+    """
+    return neighbor(G, initial=initial, nearest=False)
+
+
+def nearest_neighbor(G, initial=0):
+    """Run the nearest neighbor heuristic on G from the initial node.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        intial (int): index of the node to start from.
+    """
+    return neighbor(G, initial=initial, nearest=True)
+
+
 def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
     """Run an insertion heuristic on G starting with the initial 2-node tour.
 
@@ -256,6 +278,28 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
         tours.append(tour.copy())
 
     return tours if iterations else tour
+
+
+def nearest_insertion(G, initial=[0,1,0]):
+    """Run the nearest insertion heuristic on G from the initial node.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        intial (int): 2-node tour to start from.
+    """
+    return insertion(G, initial=initial, nearest=True)
+
+
+def furthest_insertion(G, initial=None):
+    """Run the nearest insertion heuristic on G from the initial node.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        intial (int): 2-node tour to start from.
+    """
+    if initial is None:
+        initial = [0,len(G)-1,0]
+    return insertion(G, initial=initial, nearest=False)
 
 
 def two_opt(G, tour, iterations=False):
@@ -331,6 +375,15 @@ def optimal_tour(name):
     with open('data/optimal_tours.pickle', 'rb') as f:
         optimal_tours = pickle.load(f)
     return optimal_tours[name]
+
+
+def edges_in(tour):
+    """Return the list of edges in the given tour.
+
+    Args:
+        tour (List[int]): List of node indices representing a tour.
+    """
+    return [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
 
 
 def tour_cost(G, tour):
