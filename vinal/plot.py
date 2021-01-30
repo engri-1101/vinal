@@ -11,6 +11,7 @@ __all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations',
 import numpy as np
 import pandas as pd
 import networkx as nx
+from PIL import Image
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
                          tour_cost)
@@ -125,9 +126,14 @@ def _graph_range(x, y):
 
 def _blank_plot(G, plot_width, plot_height, image=None):
     """Return a blank bokeh plot."""
-    x = nx.get_node_attributes(G,'x').values()
-    y = nx.get_node_attributes(G,'y').values()
-    min_x, max_x, min_y, max_y = _graph_range(x,y)
+    if image is not None:
+        im = Image.open(image)
+        max_x, max_y = im.size
+        min_x, min_y = 0 ,0
+    else:
+        x = nx.get_node_attributes(G,'x').values()
+        y = nx.get_node_attributes(G,'y').values()
+        min_x, max_x, min_y, max_y = _graph_range(x,y)
     plot = figure(x_range=(min_x, max_x),
                   y_range=(min_y, max_y),
                   title="",
@@ -152,8 +158,8 @@ def _blank_plot(G, plot_width, plot_height, image=None):
 def _add_image(plot, image):
     """Add an image to the background of the plot."""
     plot.image_url(url=[image],
-                   x=plot.x_range.start-20,
-                   y=plot.y_range.end+5,
+                   x=plot.x_range.start,
+                   y=plot.y_range.end,
                    w=plot.x_range.end - plot.x_range.start,
                    h=plot.y_range.end - plot.y_range.start,
                    level='image')
