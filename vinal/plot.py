@@ -165,15 +165,24 @@ def _add_image(plot, image):
                    level='image')
 
 
+def _edge_positions(G, edges, ret='dict'):
+    """Return positional data for the given edges on graph G."""
+    xs = {(u,v): (G.nodes[u]['x'], G.nodes[v]['x']) for u,v in edges}
+    ys = {(u,v): (G.nodes[u]['y'], G.nodes[v]['y']) for u,v in edges}
+    if ret == 'dict':
+        return xs, ys
+    else:
+        return list(xs.values()), list(ys.values())
+
+
 def _set_edge_positions(G):
     """Add edge attribute with positional data."""
-    xs = {(u,v): (G.nodes[u]['x'], G.nodes[v]['x']) for u,v in G.edges}
-    ys = {(u,v): (G.nodes[u]['y'], G.nodes[v]['y']) for u,v in G.edges}
+    xs, ys = _edge_positions(G, G.edges)
     nx.set_edge_attributes(G, xs, 'xs')
     nx.set_edge_attributes(G, ys, 'ys')
 
 
-def _set_graph_colors(G, edges=[], show_all_edges=True):
+def _set_graph_colors(G):
     """Add node/edge attribute with color data. Highlight edges."""
     for u in G.nodes:
         G.nodes[u]['line_color'] = PRIMARY_DARK_COLOR
@@ -181,58 +190,62 @@ def _set_graph_colors(G, edges=[], show_all_edges=True):
         G.nodes[u]['fill_color'] = PRIMARY_LIGHT_COLOR
     for u,v in G.edges:
         G[u][v]['line_color'] = TERTIARY_COLOR
-        if show_all_edges:
-            G[u][v]['visible'] = True
-        else:
-            G[u][v]['visible'] = False
-    for u,v in edges:
-        G[u][v]['line_color'] = TERTIARY_DARK_COLOR
-        G[u][v]['visible'] = True
 
 
-def _graph_sources(G):
-    """Return data sources for the graph G."""
+def _add_nodes(G, plot):
+    """Add nodes from G to the plot. Return the data source and glyphs.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        plot (figure): Plot to add the nodes to.
+    """
     nodes_df = pd.DataFrame([G.nodes[u] for u in sorted(G.nodes())])
     nodes_src = ColumnDataSource(data=nodes_df.to_dict(orient='list'))
 
+    nodes_glyph = plot.circle(x='x', y='y', size=NODE_SIZE, level='glyph',
+                              line_color='line_color', fill_color='fill_color',
+                              line_width='line_width',
+                              nonselection_fill_alpha=1,
+                              nonselection_line_alpha=1, source=nodes_src)
+    return nodes_src, nodes_glyph
+
+
+def _add_edges(G, plot, show_labels):
+    """Add edges from G to the plot. Return the data source and glyphs.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        plot (figure): Plot to add the edges to.
+        show_labels (bool): True iff each edge should be labeled.
+    """
     edges_df = pd.DataFrame([G[u][v] for u,v in G.edges()])
     u,v = zip(*[(u,v) for u,v in G.edges])
     edges_df['u'] = u
     edges_df['v'] = v
     edges_src = ColumnDataSource(data=edges_df.to_dict(orient='list'))
 
-    lbl_x = [np.mean(i) for i in nx.get_edge_attributes(G, 'xs').values()]
-    lbl_y = [np.mean(i) for i in nx.get_edge_attributes(G, 'ys').values()]
-    lbl_txt = list(nx.get_edge_attributes(G,'weight').values())
-    labels_src = ColumnDataSource(data={'x': lbl_x,
-                                        'y': lbl_y,
-                                        'text': lbl_txt})
-    return nodes_src, edges_src, labels_src
-
-
-def _graph_glyphs(plot, nodes_src, edges_src, labels_src,
-                  show_edges=True, show_labels=True):
-    """Add and return glyphs for nodes and edges"""
     edges_glyph = plot.multi_line(xs='xs', ys='ys',
                                   line_color='line_color',
                                   line_cap='round',
                                   hover_line_color=TERTIARY_DARK_COLOR,
                                   line_width=LINE_WIDTH,
                                   nonselection_line_alpha=1,
-                                  visible=show_edges,
-                                  alpha='visible',
                                   level='image',
                                   source=edges_src)
-    nodes_glyph = plot.circle(x='x', y='y', size=NODE_SIZE, level='glyph',
-                              line_color='line_color', fill_color='fill_color',
-                              line_width='line_width',
-                              nonselection_fill_alpha=1,
-                              nonselection_line_alpha=1, source=nodes_src)
 
-    labels = LabelSet(x='x', y='y', text='text', render_mode='canvas',
-                      visible=show_labels, source=labels_src)
-    plot.add_layout(labels)
-    return edges_glyph, nodes_glyph
+    if show_labels:
+        lbl_x = [np.mean(i) for i in nx.get_edge_attributes(G, 'xs').values()]
+        lbl_y = [np.mean(i) for i in nx.get_edge_attributes(G, 'ys').values()]
+        lbl_txt = list(nx.get_edge_attributes(G,'weight').values())
+        labels_src = ColumnDataSource(data={'x': lbl_x,
+                                            'y': lbl_y,
+                                            'text': lbl_txt})
+
+        labels = LabelSet(x='x', y='y', text='text', render_mode='canvas',
+                          source=labels_src)
+        plot.add_layout(labels)
+
+    return edges_src, edges_glyph
 
 
 def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
@@ -248,12 +261,17 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
                        plot_height=height, image=image)
 
     _set_edge_positions(G)
-    _set_graph_colors(G, edges, show_all_edges=show_all_edges)
+    _set_graph_colors(G)
 
-    nodes_src, edges_src, labels_src = _graph_sources(G)
-    edges_glyph, nodes_glyph = _graph_glyphs(plot, nodes_src, edges_src,
-                                             labels_src,
-                                             show_labels=show_labels)
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    if show_all_edges:
+        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
+
+    if len(edges) > 0:
+        xs, ys = _edge_positions(G, edges, ret='list')
+        plot.multi_line(xs=xs, ys=ys, line_cap='round', line_width=LINE_WIDTH,
+                        line_color=TERTIARY_DARK_COLOR, level='image')
+
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
                              renderers=[nodes_glyph]))
     grid = gridplot([[plot]],
@@ -283,9 +301,13 @@ def plot_create(G, create, width=None, height=None, image=None):
                        plot_height=height, image=image)
 
     _set_edge_positions(G)
-    _set_graph_colors(G, show_all_edges=show_all_edges)
+    _set_graph_colors(G)
 
-    nodes_src, edges_src, labels_src = _graph_sources(G)
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    if show_all_edges:
+        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
+    else:
+        edges_src = None
 
     source = ColumnDataSource(data={'tree_nodes': [],
                                     'tree_edges': [],
@@ -300,9 +322,6 @@ def plot_create(G, create, width=None, height=None, image=None):
     plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
               line_cap='round', line_width=LINE_WIDTH, level='image',
               source=tour_src)
-    edges_glyph, nodes_glyph = _graph_glyphs(plot, nodes_src, edges_src,
-                                             labels_src,
-                                             show_labels=show_labels)
 
     check_done = """
     if (error_msg.text == 'done.') {
@@ -434,7 +453,7 @@ def plot_create(G, create, width=None, height=None, image=None):
 
 
 def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
-                          swaps=None, show_edges=True, show_labels=True,
+                          swaps=None, show_all_edges=True, show_labels=True,
                           width=None, height=None, image=None):
     """Plot the graph G with iterations of edges, nodes, and tables.
 
@@ -445,8 +464,7 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         tables (List): Tables at each iteration.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width,
-                       plot_height=height, image=image)
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -459,8 +477,7 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         edge_xs = []
         edge_ys = []
         for i in range(len(edges)):
-            xs = [G[u][v]['xs'] for u,v in edges[i]]
-            ys = [G[u][v]['ys'] for u,v in edges[i]]
+            xs, ys = _edge_positions(G, edges[i], ret='list')
             edge_xs.append(xs)
             edge_ys.append(ys)
         source_data['edge_xs'] = edge_xs
@@ -503,8 +520,10 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
 
     # data sources and glyphs
     args_dict = {}
-    nodes_src, edges_src, labels_src = _graph_sources(G)
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
     args_dict['nodes_src'] = nodes_src
+    if show_all_edges:
+        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
 
     if nodes is not None:
         for i in range(len(nodes_src.data['line_color'])):
@@ -521,10 +540,6 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
     args_dict['n'] = n
     args_dict['k'] = k
     args_dict['done'] = done
-    edges_glyph, nodes_glyph = _graph_glyphs(plot, nodes_src, edges_src,
-                                             labels_src,
-                                             show_edges=show_edges,
-                                             show_labels=show_labels)
 
     if edges is not None:
         edge_subset_src = ColumnDataSource(data={'xs': edge_xs[0],
@@ -677,6 +692,6 @@ def plot_tsp_heuristic(G, alg, initial, width=None, height=None, image=None):
     edges = [[(tour[i], tour[i+1]) for i in range(len(tour)-1)] for tour in tours]
     costs = [tour_cost(G, tour) for tour in tours]
     plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
-                          swaps=swaps, show_edges=False, show_labels=False,
+                          swaps=swaps, show_all_edges=False, show_labels=False,
                           width=width, height=height, image=image)
     return tours[-1]
