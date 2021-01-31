@@ -4,7 +4,7 @@ This module contains various functions to plot graphs and algorithms.
 """
 
 __author__ = 'Henry Robbins'
-__all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations',
+__all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations', 'plot_tour',
            'plot_dijkstras', 'plot_mst_algorithm', 'plot_tsp_heuristic']
 
 
@@ -280,6 +280,18 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
                     toolbar_options={'logo': None})
 
     show(grid)
+
+
+def plot_tour(G, tour, width=None, height=None, image=None):
+    """Plot the graph G.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        tour (List): Tour of the graph
+    """
+    edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
+    plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
+               width=width, height=height, image=image)
 
 
 def plot_create(G, create, width=None, height=None, image=None):

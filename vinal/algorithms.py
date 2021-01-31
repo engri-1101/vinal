@@ -8,7 +8,7 @@ __all__ = ['dijkstras', 'prims', 'kruskals', 'reverse_kruskals',
            'spanning_tree_cost', 'neighbor', 'random_neighbor',
            'nearest_neighbor', 'insertion', 'nearest_insertion',
            'furthest_insertion' 'two_opt', 'solve_tsp', 'optimal_tour',
-           'edges_in', 'tour_cost']
+           'tour_cost']
 
 
 import math
@@ -373,15 +373,6 @@ def optimal_tour(name):
     with open('data/optimal_tours.pickle', 'rb') as f:
         optimal_tours = pickle.load(f)
     return optimal_tours[name]
-
-
-def edges_in(tour):
-    """Return the list of edges in the given tour.
-
-    Args:
-        tour (List[int]): List of node indices representing a tour.
-    """
-    return [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
 
 
 def tour_cost(G, tour):
