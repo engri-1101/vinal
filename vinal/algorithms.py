@@ -243,10 +243,9 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
         nearest (bool): Run nearest insertion if true. Otherwise, run random.
         iterations (bool): True iff all iterations should be returned.
     """
+    A = nx.adjacency_matrix(G).todense()
 
     unvisited = list(range(len(G)))  # list of nodes
-
-    # start tour at initial and remove it from unvisited
     tour = list(initial)
     unvisited.remove(initial[0])
     unvisited.remove(initial[1])
@@ -254,9 +253,8 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
 
     # choose next node from unvisited
     while len(unvisited) > 0:
-        d = {}
-        for u in unvisited:
-            d[u] = min([G[u][v]['weight'] for v in np.unique(tour)])
+        d = A[:,tour[-1]].min(axis=1)
+        d = {i : d[i] for i in range(len(d)) if i in unvisited}
         if nearest:
             min_val = min(d.values())
             possible = [k for k, v in d.items() if v == min_val]
@@ -269,8 +267,8 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
         increase = []
         for i in range(len(tour)-1):
             u, v = tour[i], tour[i+1]
-            cost_before = G[u][v]['weight']
-            cost_after = G[u][next_node]['weight'] + G[next_node][v]['weight']
+            cost_before = A[u,v]
+            cost_after = A[u,next_node] + A[next_node,v]
             increase.append(cost_after - cost_before)
         insert_index = increase.index(min(increase))+1
         tour.insert(insert_index, next_node)
