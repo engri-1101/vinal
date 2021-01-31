@@ -248,7 +248,7 @@ def _add_edges(G, plot, show_labels):
     return edges_src, edges_glyph
 
 
-def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
+def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
                width=None, height=None, image=None):
     """Plot the graph G.
 
@@ -272,9 +272,13 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[],
         plot.multi_line(xs=xs, ys=ys, line_cap='round', line_width=LINE_WIDTH,
                         line_color=TERTIARY_DARK_COLOR, level='image')
 
+    cost_txt = '' if cost is None else ('%.1f' % cost)
+    cost = Div(text=cost_txt, width=int(plot.plot_width/2), align='center')
+
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
                              renderers=[nodes_glyph]))
-    grid = gridplot([[plot]],
+    grid = gridplot([[plot],
+                     [row(cost)]],
                     plot_width=width, plot_height=height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
@@ -289,9 +293,10 @@ def plot_tour(G, tour, width=None, height=None, image=None):
         G (nx.Graph): Networkx graph.
         tour (List): Tour of the graph
     """
+    cost = tour_cost(G, tour)
     edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
     plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
-               width=width, height=height, image=image)
+               cost=cost, width=width, height=height, image=image)
 
 
 def plot_create(G, create, width=None, height=None, image=None):
