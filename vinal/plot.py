@@ -546,9 +546,10 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         for i in range(len(tables[0])-1):
             columns.append(TableColumn(field=str(i), title=str(i)))
         table = DataTable(source=table_src, columns=columns, height=80,
-                          width=width, background='white', index_position=None,
-                          editable=False, reorderable=False, sortable=False,
-                          selectable=False)
+                          width_policy='fit', max_width=plot.plot_width,
+                          width=plot.plot_width, background='white',
+                          index_position=None, editable=False,
+                          reorderable=False, sortable=False, selectable=False)
         args_dict['table_src'] = table_src
 
     if swaps is not None:
@@ -586,10 +587,12 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
 
     # buttons
     next_button = Button(label="Next", button_type="primary",
-                         width_policy='fit', sizing_mode='scale_width')
+                         max_width=int(plot.plot_width/2),
+                         width_policy='fit', sizing_mode='stretch_width')
     next_button.js_on_click(CustomJS(args=args_dict, code=next_btn_code))
     prev_button = Button(label="Previous", button_type="primary",
-                         width_policy='fit', sizing_mode='scale_width')
+                         max_width=int(plot.plot_width/2),
+                         width_policy='fit', sizing_mode='stretch_width')
     prev_button.js_on_click(CustomJS(args=args_dict, code=prev_btn_code))
 
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
