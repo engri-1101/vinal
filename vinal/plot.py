@@ -373,14 +373,21 @@ def plot_create(G, create, width=None, height=None, image=None):
     var tree_nodes = source.data['tree_nodes']
     var tree_edges = source.data['tree_edges']
 
-    if (!tree_nodes.includes(u) || !tree_nodes.includes(v)) {
+    var first_edge = (tree_edges.length == 0)
+    var u_in_tree = tree_nodes.includes(u)
+    var v_in_tree = tree_nodes.includes(v)
+    var one_in_tree = ( u_in_tree && !v_in_tree ) || ( !u_in_tree && v_in_tree )
+
+    if (first_edge || one_in_tree) {
         if (!tree_nodes.includes(v)) {
             nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
             nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+            tree_nodes.push(v)
         }
         if (!tree_nodes.includes(u)) {
             nodes_src.data['fill_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
             nodes_src.data['line_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
+            tree_nodes.push(u)
         }
         edges_src.data['line_color'][i] = '""" + TERTIARY_DARK_COLOR + """'
         tree_edges.push([u,v])
