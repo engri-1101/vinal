@@ -14,4 +14,5 @@ from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          furthest_insertion, two_opt, solve_tsp, optimal_tour,
                          tour_cost)
 from .plot import (plot_graph, plot_create, plot_graph_iterations, plot_tour,
-                   plot_dijkstras, plot_mst_algorithm, plot_tsp_heuristic)
+                   plot_tree, plot_dijkstras, plot_mst_algorithm,
+                   plot_tsp_heuristic)

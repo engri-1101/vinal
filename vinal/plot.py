@@ -5,7 +5,8 @@ This module contains various functions to plot graphs and algorithms.
 
 __author__ = 'Henry Robbins'
 __all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations', 'plot_tour',
-           'plot_dijkstras', 'plot_mst_algorithm', 'plot_tsp_heuristic']
+           'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
+           'plot_tsp_heuristic']
 
 
 import numpy as np
@@ -287,7 +288,7 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
 
 
 def plot_tour(G, tour, width=None, height=None, image=None):
-    """Plot the graph G.
+    """Plot the tour on graph G.
 
     Args:
         G (nx.Graph): Networkx graph.
@@ -296,6 +297,18 @@ def plot_tour(G, tour, width=None, height=None, image=None):
     cost = tour_cost(G, tour)
     edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
     plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
+               cost=cost, width=width, height=height, image=image)
+
+
+def plot_tree(G, tree, show_cost=False, width=None, height=None, image=None):
+    """Plot the tree on graph G.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        tree (List): List of edges in the tree.
+    """
+    cost = spanning_tree_cost(G, tree)
+    plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
                cost=cost, width=width, height=height, image=image)
 
 
