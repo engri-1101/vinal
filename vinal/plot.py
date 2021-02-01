@@ -6,7 +6,7 @@ This module contains various functions to plot graphs and algorithms.
 __author__ = 'Henry Robbins'
 __all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations', 'plot_tour',
            'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
-           'plot_tsp_heuristic']
+           'plot_tsp_heuristic', 'plot_etching_tour']
 
 
 import numpy as np
@@ -132,8 +132,14 @@ def _blank_plot(G, plot_width=None, plot_height=None, image=None):
         max_x, max_y = im.size
         min_x, min_y = 0 ,0
     else:
-        x = nx.get_node_attributes(G,'x').values()
-        y = nx.get_node_attributes(G,'y').values()
+        if 'x_start' in list(G.nodes[0]):
+            x = (list(nx.get_node_attributes(G,'x_start').values()) +
+                 list(nx.get_node_attributes(G,'x_end').values()))
+            y = (list(nx.get_node_attributes(G,'y_start').values()) +
+                 list(nx.get_node_attributes(G,'y_end').values()))
+        else:
+            x = nx.get_node_attributes(G,'x').values()
+            y = nx.get_node_attributes(G,'y').values()
         min_x, max_x, min_y, max_y = _graph_range(x,y)
     plot = figure(x_range=(min_x, max_x),
                   y_range=(min_y, max_y),
@@ -258,8 +264,7 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
         edges (List): Edges to highlight.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width,
-                       plot_height=height, image=image)
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -725,3 +730,47 @@ def plot_tsp_heuristic(G, alg, initial, width=None, height=None, image=None):
                           swaps=swaps, show_all_edges=False, show_labels=False,
                           width=width, height=height, image=image)
     return tours[-1]
+
+
+def plot_etching_tour(G, tour, width=None, height=None, image=None):
+    """Plot the tour on the etching problem.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        tour (List): Tour of the graph
+    """
+    # nodes
+    x_start = list(nx.get_node_attributes(G,'x_start').values())
+    x_end = list(nx.get_node_attributes(G,'x_end').values())
+    y_start = list(nx.get_node_attributes(G,'y_start').values())
+    y_end = list(nx.get_node_attributes(G,'y_end').values())
+
+    node_xs = [(G.nodes[i]['x_start'], G.nodes[i]['x_end']) for i in G.nodes]
+    node_ys = [(G.nodes[i]['y_start'], G.nodes[i]['y_end']) for i in G.nodes]
+
+    # tour edges
+    xs = []
+    ys = []
+    for i in range(len(tour)-1):
+        xs.append((G.nodes[tour[i]]['x_end'], G.nodes[tour[i+1]]['x_start']))
+        ys.append((G.nodes[tour[i]]['y_end'], G.nodes[tour[i+1]]['y_start']))
+
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+
+    cost_text = '%.1f' % tour_cost(G, tour)
+    cost = Div(text=cost_text, width=plot.plot_width, align='center')
+    plot.multi_line(xs=node_xs, ys=node_ys, line_color='black', line_width=2)
+    plot.multi_line(xs=xs, ys=ys, line_color='black', line_width=2,
+                    line_dash='dashed')
+    plot.circle(x_start, y_start, size=5, line_color='steelblue',
+                fill_color='steelblue')
+    plot.circle(x_end, y_end, size=5, line_color='#DC0000',
+                fill_color='#DC0000')
+
+    # create layout
+    grid = gridplot([[plot],[cost]],
+                    plot_width=width, plot_height=height,
+                    toolbar_location = None,
+                    toolbar_options={'logo': None})
+
+    show(grid)

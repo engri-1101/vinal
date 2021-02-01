@@ -15,4 +15,4 @@ from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          tour_cost)
 from .plot import (plot_graph, plot_create, plot_graph_iterations, plot_tour,
                    plot_tree, plot_dijkstras, plot_mst_algorithm,
-                   plot_tsp_heuristic)
+                   plot_tsp_heuristic, plot_etching_tour)
