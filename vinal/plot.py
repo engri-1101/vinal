@@ -12,6 +12,7 @@ __all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations', 'plot_tour',
 import numpy as np
 import pandas as pd
 import networkx as nx
+import warnings
 from PIL import Image
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
@@ -217,7 +218,7 @@ def _add_nodes(G, plot):
     return nodes_src, nodes_glyph
 
 
-def _add_edges(G, plot, show_labels):
+def _add_edges(G, plot, show_labels=True):
     """Add edges from G to the plot. Return the data source and glyphs.
 
     Args:
@@ -315,183 +316,6 @@ def plot_tree(G, tree, show_cost=False, width=None, height=None, image=None):
     cost = spanning_tree_cost(G, tree)
     plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
                cost=cost, width=width, height=height, image=image)
-
-
-def plot_create(G, create, width=None, height=None, image=None):
-    """Plot a graph in which you can either create a tour or spanning tree.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        create (string): {'tour', 'tree'}
-    """
-    if create == 'tour':
-        show_all_edges = False
-        show_labels = False
-    elif create == 'tree':
-        show_all_edges = True
-        show_labels = True
-
-    G = G.copy()
-    plot = _blank_plot(G, plot_width=width,
-                       plot_height=height, image=image)
-
-    _set_edge_positions(G)
-    _set_graph_colors(G)
-
-    nodes_src, nodes_glyph = _add_nodes(G, plot)
-    if show_all_edges:
-        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
-    else:
-        edges_src = None
-
-    source = ColumnDataSource(data={'tree_nodes': [],
-                                    'tree_edges': [],
-                                    'clicked': []})
-    tour_src = ColumnDataSource(data={'edges_x': [],
-                                      'edges_y': []})
-    G_matrix = nx.adjacency_matrix(G).todense().tolist()
-    cost_matrix = ColumnDataSource(data={'G': G_matrix})
-    cost = Div(text='0.0', width=int(plot.plot_width/3), align='center')
-    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
-    clicked = Div(text='[]', width=int(plot.plot_width/3), align='center')
-    plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
-              line_cap='round', line_width=LINE_WIDTH, level='image',
-              source=tour_src)
-
-    check_done = """
-    if (error_msg.text == 'done.') {
-        return;
-    }
-    """
-
-    create_tree_on_click = """
-    var i = source.data['last_index']
-    var u = edges_src.data['u'][i]
-    var v = edges_src.data['v'][i]
-    var w = edges_src.data['weight'][i]
-
-    var tree_nodes = source.data['tree_nodes']
-    var tree_edges = source.data['tree_edges']
-
-    var first_edge = (tree_edges.length == 0)
-    var u_in_tree = tree_nodes.includes(u)
-    var v_in_tree = tree_nodes.includes(v)
-    var one_in_tree = ( u_in_tree && !v_in_tree ) || ( !u_in_tree && v_in_tree )
-
-    if (first_edge || one_in_tree) {
-        if (!tree_nodes.includes(v)) {
-            nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-            nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-            tree_nodes.push(v)
-        }
-        if (!tree_nodes.includes(u)) {
-            nodes_src.data['fill_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
-            nodes_src.data['line_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
-            tree_nodes.push(u)
-        }
-        edges_src.data['line_color'][i] = '""" + TERTIARY_DARK_COLOR + """'
-        tree_edges.push([u,v])
-        var prev_cost = parseFloat(cost.text)
-        cost.text = (prev_cost + w).toFixed(1)
-        error_msg.text = ''
-    } else {
-        error_msg.text = 'You have selected an invalid edge.'
-    }
-
-    if (tree_nodes.length == nodes_src.data['x'].length) {
-        error_msg.text = 'done.'
-    }
-
-    clicked.text = '['
-    for (let i = 0; i < tree_edges.length; i++) {
-        var edge_str = tree_edges[i].join(',')
-        clicked.text = clicked.text.concat('(').concat(edge_str).concat(')')
-        if (!(i == tree_edges.length - 1)) {
-            clicked.text = clicked.text.concat(',')
-        }
-    }
-    clicked.text = clicked.text.concat(']')
-
-    source.change.emit()
-    nodes_src.change.emit()
-    edges_src.change.emit()
-    """
-
-    create_tour_on_click = """
-    var v = source.data['last_index']
-    var n = nodes_src.data['line_color'].length
-    var tour = source.data['clicked']
-
-    if (tour.includes(v)) {
-        error_msg.text = 'This node is already in the tour.'
-        return;
-    } else {
-        error_msg.text = ''
-    }
-
-    function add_node(v) {
-        // add to cost
-        if (tour.length > 0) {
-            var u = tour[tour.length - 1]
-            var prev_cost = parseFloat(cost.text)
-            cost.text = (prev_cost + cost_matrix.data['G'][u][v]).toFixed(1)
-        }
-
-        // add to tour
-        tour.push(v)
-        clicked.text = '['.concat(tour.join(',')).concat(']')
-
-        // highlight new node
-        nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-        nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-
-        // highlight new edge
-        tour_src.data['edges_x'].push(nodes_src.data['x'][v])
-        tour_src.data['edges_y'].push(nodes_src.data['y'][v])
-    }
-
-    add_node(v)
-    if (tour.length == n) {
-        add_node(tour[0])
-        error_msg.text = 'done.'
-    }
-
-    source.change.emit()
-    tour_src.change.emit()
-    nodes_src.change.emit()
-    """
-
-    if create == 'tree':
-        on_click = check_done + create_tree_on_click
-    else:
-        on_click = check_done + create_tour_on_click
-
-    renderers = [edges_glyph if create == 'tree' else nodes_glyph]
-    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
-                             renderers=[nodes_glyph]),
-                   HoverTool(tooltips=None,
-                             callback=CustomJS(args=dict(source=source),
-                                               code=ON_HOVER),
-                             renderers=renderers),
-                   TapTool(callback=CustomJS(args=dict(source=source,
-                                                       edges_src=edges_src,
-                                                       nodes_src=nodes_src,
-                                                       tour_src=tour_src,
-                                                       cost_matrix=cost_matrix,
-                                                       cost=cost,
-                                                       error_msg=error_msg,
-                                                       clicked=clicked),
-                                             code=on_click),
-                           renderers=renderers))
-
-    # create layout
-    grid = gridplot([[plot],
-                     [row(cost,error_msg,clicked)]],
-                    plot_width=width, plot_height=height,
-                    toolbar_location=None,
-                    toolbar_options={'logo': None})
-
-    show(grid)
 
 
 def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
@@ -778,6 +602,300 @@ def plot_etching_tour(G, tour, width=None, height=None, image=None):
     grid = gridplot([[plot],[cost]],
                     plot_width=width, plot_height=height,
                     toolbar_location = None,
+                    toolbar_options={'logo': None})
+
+    show(grid)
+
+
+def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
+                height=None, image=None):
+    """Plot in which you can create a spanning tree, shortest path tree, or
+    tour freely or assisted by an algorithm.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        create (string): {'tour', 'tree'}
+        assisted_algorithm (str): {'prims'}
+        source (int): Source vertex to run the algorithm from.
+    """
+    if create == 'tour':
+        show_all_edges = False
+        show_labels = False
+    elif create == 'tree':
+        show_all_edges = True
+        show_labels = True
+
+    G = G.copy()
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    if source is not None:
+        nodes_src.data['fill_color'][source] = PRIMARY_DARK_COLOR
+        nodes_src.data['line_color'][source] = PRIMARY_DARK_COLOR
+    if show_all_edges:
+        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
+    else:
+        edges_src = None
+
+    # pre-processing
+    src_data = {'visited': [],
+                'unvisited': list(range(len(G))),
+                'tree_edges': [],
+                'edge_ids': [],
+                'clicked': []}
+
+    if assisted_algorithm == 'prims':
+        unvisited = list(range(len(G)))
+        unvisited.remove(source)
+        src_data['visited'] = [source]
+        src_data['unvisited'] = unvisited
+    elif assisted_algorithm == 'kruskals':
+        edges = nx.get_edge_attributes(G,'weight')
+        edges = list(dict(sorted(edges.items(), key=lambda item: item[1])))
+        src_data['sorted_edges'] = edges
+        src_data['forest'] = list(range(len(G)))
+        src_data['index'] = [0]
+
+    # build helpful objects to pass to Javascript
+    if create == 'tree':
+        edge_ids = np.zeros((len(G), len(G)))
+        G_matrix = np.zeros((len(G), len(G)))
+        edge_pairs = list(zip(edges_src.data['u'], edges_src.data['v']))
+        for i in range(len(edge_pairs)):
+            u,v = edge_pairs[i]
+            edge_ids[u][v] = i
+            edge_ids[v][u] = i
+            G_matrix[u][v] = G[u][v]['weight']
+            G_matrix[v][u] = G[u][v]['weight']
+        src_data['edge_ids'] = edge_ids.tolist()
+        G_matrix = G_matrix.tolist()
+    else:
+        G_matrix = nx.adjacency_matrix(G).todense().tolist()
+
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=src_data)
+    tour_src = ColumnDataSource(data={'edges_x': [],
+                                      'edges_y': []})
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
+    cost = Div(text='0.0', width=int(plot.plot_width/3), align='center')
+    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
+    clicked = Div(text='[]', width=int(plot.plot_width/3), align='center')
+    plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
+              line_cap='round', line_width=LINE_WIDTH, level='image',
+              source=tour_src)
+
+    check_done = """
+    if (error_msg.text == 'done.') {
+        return;
+    }
+    """
+
+    load_data = """
+    var G = cost_matrix.data['G']
+    var visited = source.data['visited']
+    var unvisited = source.data['unvisited']
+    var tree_edges = source.data['tree_edges']
+    var edge_ids = source.data['edge_ids']
+
+    var i = source.data['last_index']
+    var u = edges_src.data['u'][i]
+    var v = edges_src.data['v'][i]
+    var w = edges_src.data['weight'][i]
+    """
+
+    # Code to be run when an edge is successfully selected
+    select_edge = """
+    if (!visited.includes(v)) {
+        nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+        nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+        visited.push(v)
+        unvisited.splice(unvisited.indexOf(v), 1)
+    }
+    if (!visited.includes(u)) {
+        nodes_src.data['fill_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
+        nodes_src.data['line_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
+        visited.push(u)
+        unvisited.splice(unvisited.indexOf(u), 1)
+    }
+    edges_src.data['line_color'][i] = '""" + TERTIARY_DARK_COLOR + """'
+    tree_edges.push([u,v])
+    var prev_cost = parseFloat(cost.text)
+    cost.text = (prev_cost + w).toFixed(1)
+    error_msg.text = ''
+    """
+
+    prims = """
+    var possible = {}
+    for (let i = 0; i < visited.length; i++) {
+        for (let j = 0; j < unvisited.length; j++) {
+            var a = visited[i]
+            var b = unvisited[j]
+            if (G[a][b] != 0) {
+                var id = edge_ids[a][b]
+                possible[id] = G[a][b]
+            }
+        }
+    }
+
+    var keys  = Object.keys(possible).sort(function(a,b) { return possible[a] - possible[b]; });
+    var valid = keys.filter(function(x) { return possible[x] == possible[keys[0]]; });
+
+    var first_edge = (visited.length == 0)
+    var u_in_tree = visited.includes(u)
+    var v_in_tree = visited.includes(v)
+    var one_in_tree = (u_in_tree && !v_in_tree) || (!u_in_tree && v_in_tree)
+
+    if (first_edge || one_in_tree) {
+        if (valid.includes(i.toString())) {
+            %s
+        } else {
+            error_msg.text = 'Smaller weight edge exists.'
+        }
+    } else {
+        if (u_in_tree && v_in_tree) {
+            error_msg.text = 'Edge creates a cycle.'
+        } else {
+            error_msg.text = 'Edge not adjacent to the current tree.'
+        }
+    }
+    """
+
+    kruskals = """
+    var sorted_edges = source.data['sorted_edges']
+    var forest = source.data['forest']
+    var index = source.data['index'][0]
+
+    var a = sorted_edges[index][0]
+    var b = sorted_edges[index][1]
+    while (forest[a] == forest[b]) {
+        index += 1
+        a = sorted_edges[index][0]
+        b = sorted_edges[index][1]
+    }
+    var min_val = G[sorted_edges[index][0]][sorted_edges[index][1]]
+
+    if (forest[u] != forest[v]) {
+        if (G[u][v] == min_val) {
+            %s
+            var x = forest[u]
+            var y = forest[v]
+            forest = forest.map(function(k) {if (k == y) {return x} else {return k} })
+            source.data['forest'] = forest
+            if (u == a && v == b) {
+                index += 1
+            }
+        } else {
+             error_msg.text = 'Smaller weight edge exists.'
+        }
+    } else {
+        error_msg.text = 'This edge creates a cycle.'
+    }
+
+    source.data['index'][0] = index
+    """
+
+    tree_update = """
+    if (tree_edges.length == nodes_src.data['x'].length - 1) {
+        error_msg.text = 'done.'
+    }
+
+    clicked.text = '['
+    for (let i = 0; i < tree_edges.length; i++) {
+        var edge_str = tree_edges[i].join(',')
+        clicked.text = clicked.text.concat('(').concat(edge_str).concat(')')
+        if (!(i == tree_edges.length - 1)) {
+            clicked.text = clicked.text.concat(',')
+        }
+    }
+    clicked.text = clicked.text.concat(']')
+
+    source.change.emit()
+    nodes_src.change.emit()
+    edges_src.change.emit()
+    """
+
+    create_tour_on_click = """
+    var v = source.data['last_index']
+    var n = nodes_src.data['line_color'].length
+    var tour = source.data['clicked']
+
+    if (tour.includes(v)) {
+        error_msg.text = 'This node is already in the tour.'
+        return;
+    } else {
+        error_msg.text = ''
+    }
+
+    function add_node(v) {
+        // add to cost
+        if (tour.length > 0) {
+            var u = tour[tour.length - 1]
+            var prev_cost = parseFloat(cost.text)
+            cost.text = (prev_cost + cost_matrix.data['G'][u][v]).toFixed(1)
+        }
+
+        // add to tour
+        tour.push(v)
+        clicked.text = '['.concat(tour.join(',')).concat(']')
+
+        // highlight new node
+        nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+        nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
+
+        // highlight new edge
+        tour_src.data['edges_x'].push(nodes_src.data['x'][v])
+        tour_src.data['edges_y'].push(nodes_src.data['y'][v])
+    }
+
+    add_node(v)
+    if (tour.length == n) {
+        add_node(tour[0])
+        error_msg.text = 'done.'
+    }
+
+    source.change.emit()
+    tour_src.change.emit()
+    nodes_src.change.emit()
+    """
+
+    if create == 'tour':
+        on_click = check_done + create_tour_on_click
+    else:
+        if assisted_algorithm is None:
+            on_click = check_done + load_data + select_edge + tree_update
+        elif assisted_algorithm == 'prims':
+            on_click = check_done + load_data + prims % select_edge + tree_update
+        elif assisted_algorithm == 'kruskals':
+            on_click = check_done + load_data + kruskals % select_edge + tree_update
+
+    renderers = [edges_glyph if create == 'tree' else nodes_glyph]
+    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
+                             renderers=[nodes_glyph]),
+                   HoverTool(tooltips=None,
+                             callback=CustomJS(args=dict(source=source),
+                                               code=ON_HOVER),
+                             renderers=renderers),
+                   TapTool(callback=CustomJS(args=dict(source=source,
+                                                       edges_src=edges_src,
+                                                       nodes_src=nodes_src,
+                                                       tour_src=tour_src,
+                                                       cost_matrix=cost_matrix,
+                                                       cost=cost,
+                                                       error_msg=error_msg,
+                                                       clicked=clicked),
+                                             code=on_click),
+                           renderers=renderers))
+
+    # create layout
+    grid = gridplot([[plot],
+                     [row(cost,error_msg,clicked)]],
+                    plot_width=width, plot_height=height,
+                    toolbar_location=None,
                     toolbar_options={'logo': None})
 
     show(grid)
