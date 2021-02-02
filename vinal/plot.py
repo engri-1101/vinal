@@ -14,6 +14,7 @@ import pandas as pd
 import networkx as nx
 import warnings
 from PIL import Image
+from pkg_resources import resource_stream
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
                          tour_cost)
@@ -45,74 +46,6 @@ TERTIARY_DARK_COLOR = '#404040'
 NODE_SIZE = 11
 NODE_LINE_WIDTH = 3
 LINE_WIDTH = 5
-
-# --------------------
-# JAVASCRIPT CONSTANTS
-# --------------------
-
-INCREMENT = """
-if ((parseInt(n.text) + 1) < parseInt(k.text)) {
-    n.text = (parseInt(n.text) + 1).toString()
-}
-var iteration = parseInt(n.text)
-"""
-
-DECREMENT = """
-if ((parseInt(n.text) - 1) >= 0) {
-    n.text = (parseInt(n.text) - 1).toString()
-}
-var iteration = parseInt(n.text)
-"""
-
-DONE_UPDATE = """
-if (iteration == parseInt(k.text) - 1) {
-    done.text = "done."
-} else {
-    done.text = ""
-}
-"""
-
-EDGE_SUBSET_UPDATE = """
-edge_subset_src.data['xs'] = source.data['edge_xs'][iteration]
-edge_subset_src.data['ys'] = source.data['edge_ys'][iteration]
-edge_subset_src.change.emit()
-"""
-
-COST_UPDATE = """
-cost.text = source.data['costs'][iteration].toFixed(1)
-"""
-
-TABLE_UPDATE = """
-table_src.data = source.data['tables'][iteration]
-"""
-
-NODES_UPDATE = """
-var in_tree = source.data['nodes'][iteration]
-
-for (let i = 0; i < nodes_src.data['line_color'].length ; i++) {
-    if (in_tree.includes(i)) {
-        nodes_src.data['fill_color'][i] = '""" + PRIMARY_DARK_COLOR + """'
-        nodes_src.data['line_color'][i] = '""" + PRIMARY_DARK_COLOR + """'
-    } else {
-        nodes_src.data['fill_color'][i] = '""" + PRIMARY_LIGHT_COLOR + """'
-        nodes_src.data['line_color'][i] = '""" + PRIMARY_DARK_COLOR + """'
-    }
-}
-
-nodes_src.change.emit()
-"""
-
-SWAPS_UPDATE = """
-swaps_src.data['swaps_before_x'] = source.data['swaps_before_x'][iteration]
-swaps_src.data['swaps_before_y'] = source.data['swaps_before_y'][iteration]
-swaps_src.data['swaps_after_x'] = source.data['swaps_after_x'][iteration]
-swaps_src.data['swaps_after_y'] = source.data['swaps_after_y'][iteration]
-swaps_src.change.emit()
-"""
-
-ON_HOVER = """
-source.data['last_index'] = cb_data.index.indices[0]
-"""
 
 
 def _graph_range(x, y):
@@ -449,23 +382,24 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         args_dict['swaps_src'] = swaps_src
 
     # Javascript
-    next_btn_code = INCREMENT + DONE_UPDATE
-    prev_btn_code = DECREMENT + DONE_UPDATE
+    btn_code = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
+    next_btn_code = btn_code + 'increment_iteration()\ndone_update()\n'
+    prev_btn_code = btn_code + 'decrement_iteration()\ndone_update()\n'
     if costs is not None:
-        next_btn_code += COST_UPDATE
-        prev_btn_code += COST_UPDATE
+        next_btn_code += 'cost_update()\n'
+        prev_btn_code += 'cost_update()\n'
     if edges is not None:
-        next_btn_code += EDGE_SUBSET_UPDATE
-        prev_btn_code += EDGE_SUBSET_UPDATE
+        next_btn_code += 'edge_subset_update()\n'
+        prev_btn_code += 'edge_subset_update()\n'
     if tables is not None:
-        next_btn_code += TABLE_UPDATE
-        prev_btn_code += TABLE_UPDATE
+        next_btn_code += 'table_update()\n'
+        prev_btn_code += 'table_update()\n'
     if nodes is not None:
-        next_btn_code += NODES_UPDATE
-        prev_btn_code += NODES_UPDATE
+        next_btn_code += 'nodes_update()\n'
+        prev_btn_code += 'nodes_update()\n'
     if swaps is not None:
-        next_btn_code += SWAPS_UPDATE
-        prev_btn_code += SWAPS_UPDATE
+        next_btn_code += 'swaps_update()\n'
+        prev_btn_code += 'swaps_update()\n'
 
     # buttons
     next_button = Button(label="Next", button_type="primary",
@@ -711,289 +645,22 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
               line_cap='round', line_width=LINE_WIDTH, level='image',
               source=tour_src)
 
-    check_done = """
-    if (error_msg.text == 'done.') {
-        return;
-    }
-    """
-
-    load_data = """
-    var G = cost_matrix.data['G']
-    var visited = source.data['visited']
-    var unvisited = source.data['unvisited']
-    var tree_edges = source.data['tree_edges']
-    var edge_ids = source.data['edge_ids']
-    var clicked_list = source.data['clicked']
-
-    var i = source.data['last_index']
-    var u = edges_src.data['u'][i]
-    var v = edges_src.data['v'][i]
-    var w = edges_src.data['weight'][i]
-    """
-
-    # Code to be run when an edge is successfully selected
-    select_edge = """
-    if (!visited.includes(v)) {
-        nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-        nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-        visited.push(v)
-        unvisited.splice(unvisited.indexOf(v), 1)
-    }
-    if (!visited.includes(u)) {
-        nodes_src.data['fill_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
-        nodes_src.data['line_color'][u] = '""" + PRIMARY_DARK_COLOR + """'
-        visited.push(u)
-        unvisited.splice(unvisited.indexOf(u), 1)
-    }
-    edges_src.data['line_color'][i] = '""" + TERTIARY_DARK_COLOR + """'
-    tree_edges.push([u,v])
-    var prev_cost = parseFloat(cost.text)
-    cost.text = (prev_cost + w).toFixed(1)
-    error_msg.text = ''
-    """
-
-    prims = """
-    var possible = {}
-    for (let i = 0; i < visited.length; i++) {
-        for (let j = 0; j < unvisited.length; j++) {
-            var a = visited[i]
-            var b = unvisited[j]
-            if (G[a][b] != 0) {
-                var id = edge_ids[a][b]
-                possible[id] = G[a][b]
-            }
-        }
-    }
-
-    var keys  = Object.keys(possible).sort(function(a,b) { return possible[a] - possible[b]; });
-    var valid = keys.filter(function(x) { return possible[x] == possible[keys[0]]; });
-
-    var first_edge = (visited.length == 0)
-    var u_in_tree = visited.includes(u)
-    var v_in_tree = visited.includes(v)
-    var one_in_tree = (u_in_tree && !v_in_tree) || (!u_in_tree && v_in_tree)
-
-    if (first_edge || one_in_tree) {
-        if (valid.includes(i.toString())) {
-            %s
-        } else {
-            error_msg.text = 'Smaller weight edge exists.'
-        }
-    } else {
-        if (u_in_tree && v_in_tree) {
-            error_msg.text = 'Edge creates a cycle.'
-        } else {
-            error_msg.text = 'Edge not adjacent to the current tree.'
-        }
-    }
-
-    clicked_list = tree_edges
-    """
-
-    kruskals = """
-    var sorted_edges = source.data['sorted_edges']
-    var forest = source.data['forest']
-    var index = source.data['index'][0]
-
-    var a = sorted_edges[index][0]
-    var b = sorted_edges[index][1]
-    while (forest[a] == forest[b]) {
-        index += 1
-        a = sorted_edges[index][0]
-        b = sorted_edges[index][1]
-    }
-    var min_val = G[sorted_edges[index][0]][sorted_edges[index][1]]
-
-    if (forest[u] != forest[v]) {
-        if (G[u][v] == min_val) {
-            %s
-            var x = forest[u]
-            var y = forest[v]
-            forest = forest.map(function(k) {if (k == y) {return x} else {return k} })
-            source.data['forest'] = forest
-            if (u == a && v == b) {
-                index += 1
-            }
-        } else {
-             error_msg.text = 'Smaller weight edge exists.'
-        }
-    } else {
-        error_msg.text = 'This edge creates a cycle.'
-    }
-
-    source.data['index'][0] = index
-    clicked_list = tree_edges
-    """
-
-    reverse_kruskals = """
-    var sorted_edges = source.data['sorted_edges']
-    var index = source.data['index'][0]
-
-    function is_connected(G) {
-        function fillArray(value, len) {
-            var a = [value];
-            while (a.length * 2 <= len) a = a.concat(a);
-            if (a.length < len) a = a.concat(a.slice(0, len - a.length));
-            return a;
-        }
-
-        var check = fillArray(false, G.length)
-        check[0] = true
-        var checked = [0]
-
-        while (checked.length > 0) {
-            var a = checked.shift()
-            for (let b = 0; b < G[a].length; b++) {
-                if (G[a][b] > 0 && !check[b]) {
-                    check[b] = true
-                    checked.push(b)
-                }
-            }
-        }
-
-        return check.every(function(x) {return x})
-    }
-
-    var a = sorted_edges[index][0]
-    var b = sorted_edges[index][1]
-    var tmp_w = G[a][b]
-    G[a][b] = 0
-    G[b][a] = 0
-    while (!is_connected(G) || !tree_edges.includes(edge_ids[a][b])) {
-        G[a][b] = tmp_w
-        G[b][a] = tmp_w
-        index += 1
-        a = sorted_edges[index][0]
-        b = sorted_edges[index][1]
-        tmp_w = G[a][b]
-        G[a][b] = 0
-        G[b][a] = 0
-    }
-    G[a][b] = tmp_w
-    G[b][a] = tmp_w
-    var max_val = tmp_w
-
-    var tmp_w = w
-    G[u][v] = 0
-    G[v][u] = 0
-
-    let e = tree_edges.indexOf(i)
-    if (e > -1) {
-        if (is_connected(G)) {
-            if (tmp_w == max_val) {
-                tree_edges.splice(e, 1);
-                if (u == a && v == b) {
-                    index += 1
-                }
-                edges_src.data['line_color'][i] = '""" + TERTIARY_COLOR + """'
-                var prev_cost = parseFloat(cost.text)
-                cost.text = (prev_cost - w).toFixed(1)
-                error_msg.text = ''
-            } else {
-                G[u][v] = tmp_w
-                G[v][u] = tmp_w
-                error_msg.text = 'Larger edge weight exists. Try ('
-                                  .concat(a.toString())
-                                  .concat(', ')
-                                  .concat(b.toString())
-                                  .concat(').')
-            }
-        } else {
-            G[u][v] = tmp_w
-            G[v][u] = tmp_w
-            error_msg.text = 'Removing this edge disconnects the graph.'
-        }
-    } else {
-        G[u][v] = tmp_w
-        G[v][u] = tmp_w
-        error_msg.text = 'Edge already removed.'
-    }
-
-    var u_list = edges_src.data['u']
-    var v_list = edges_src.data['v']
-    clicked_list = []
-    for (let i = 0; i < tree_edges.length; i++) {
-        var edge = tree_edges[i]
-        clicked_list.push([u_list[edge], v_list[edge]])
-    }
-    source.data['index'][0] = index
-    """
-
-    tree_update = """
-    if (tree_edges.length == nodes_src.data['x'].length - 1) {
-        error_msg.text = 'done.'
-    }
-
-    clicked.text = '['
-    for (let i = 0; i < clicked_list.length; i++) {
-        var edge_str = clicked_list[i].join(',')
-        clicked.text = clicked.text.concat('(').concat(edge_str).concat(')')
-        if (!(i == clicked_list.length - 1)) {
-            clicked.text = clicked.text.concat(',')
-        }
-    }
-    clicked.text = clicked.text.concat(']')
-
-    source.change.emit()
-    nodes_src.change.emit()
-    edges_src.change.emit()
-    """
-
-    create_tour_on_click = """
-    var v = source.data['last_index']
-    var n = nodes_src.data['line_color'].length
-    var tour = source.data['clicked']
-
-    if (tour.includes(v)) {
-        error_msg.text = 'This node is already in the tour.'
-        return;
-    } else {
-        error_msg.text = ''
-    }
-
-    function add_node(v) {
-        // add to cost
-        if (tour.length > 0) {
-            var u = tour[tour.length - 1]
-            var prev_cost = parseFloat(cost.text)
-            cost.text = (prev_cost + cost_matrix.data['G'][u][v]).toFixed(1)
-        }
-
-        // add to tour
-        tour.push(v)
-        clicked.text = '['.concat(tour.join(',')).concat(']')
-
-        // highlight new node
-        nodes_src.data['line_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-        nodes_src.data['fill_color'][v] = '""" + PRIMARY_DARK_COLOR + """'
-
-        // highlight new edge
-        tour_src.data['edges_x'].push(nodes_src.data['x'][v])
-        tour_src.data['edges_y'].push(nodes_src.data['y'][v])
-    }
-
-    add_node(v)
-    if (tour.length == n) {
-        add_node(tour[0])
-        error_msg.text = 'done.'
-    }
-
-    source.change.emit()
-    tour_src.change.emit()
-    nodes_src.change.emit()
-    """
+    code = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
 
     if create == 'tour':
-        on_click = check_done + create_tour_on_click
+        on_click = code + 'check_done()\ncreate_tour_on_click()\n'
     else:
+        code = code + 'check_done()\nload_data()\n'
         if assisted_algorithm is None:
-            on_click = check_done + load_data + select_edge + tree_update
+            code += 'select_edge()\n'
         elif assisted_algorithm == 'prims':
-            on_click = check_done + load_data + prims % select_edge + tree_update
+            code += 'prims()\n'
         elif assisted_algorithm == 'kruskals':
-            on_click = check_done + load_data + kruskals % select_edge + tree_update
+            code += 'kruskals()\n'
         elif assisted_algorithm == 'reverse_kruskals':
-            on_click = check_done + load_data + reverse_kruskals + tree_update
+            code +='reverse_kruskals()\n'
+        code += 'tree_update()\n'
+        on_click = code
 
     renderers = [edges_glyph if create == 'tree' else nodes_glyph]
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
