@@ -63,7 +63,7 @@ def _graph_range(x, y):
     return min_x, max_x, min_y, max_y
 
 
-def _blank_plot(G, plot_width=None, plot_height=None, image=None):
+def _blank_plot(G, width=None, height=None, image=None):
     """Return a blank bokeh plot."""
     if image is not None:
         im = Image.open(image)
@@ -82,8 +82,8 @@ def _blank_plot(G, plot_width=None, plot_height=None, image=None):
     plot = figure(x_range=(min_x, max_x),
                   y_range=(min_y, max_y),
                   title="",
-                  plot_width=400 if plot_width is None else plot_width,
-                  plot_height=400 if plot_height is None else plot_height)
+                  plot_width=400 if width is None else width,
+                  plot_height=400 if height is None else height)
     plot.toolbar.logo = None
     plot.toolbar_location = None
     plot.xgrid.grid_line_color = None
@@ -254,17 +254,18 @@ def _add_tools(plot, on_click, nodes_glyph, renderers, source, edges_src=None,
                            renderers=[renderers]))
 
 
-def _get_grid(plot, cost, error_msg, clicked, width, height):
+def _get_grid(plot, cost, error_msg, clicked):
     """Return gridplot with plot and divs"""
     return gridplot([[plot],
                      [row(cost,error_msg,clicked)]],
-                    plot_width=width, plot_height=height,
+                    plot_width=plot.plot_width,
+                    plot_height=plot.plot_height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
 
 def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
-               width=None, height=None, image=None):
+               **kw):
     """Plot the graph G.
 
     Args:
@@ -272,7 +273,7 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
         edges (List): Edges to highlight.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -293,14 +294,14 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
                              renderers=[nodes_glyph]))
     grid = gridplot([[plot],
                      [row(cost)]],
-                    plot_width=width, plot_height=height,
+                    plot_width=plot.plot_width, plot_height=plot.plot_height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
     show(grid)
 
 
-def plot_tour(G, tour, width=None, height=None, image=None):
+def plot_tour(G, tour, **kw):
     """Plot the tour on graph G.
 
     Args:
@@ -310,10 +311,10 @@ def plot_tour(G, tour, width=None, height=None, image=None):
     cost = tour_cost(G, tour)
     edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
     plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
-               cost=cost, width=width, height=height, image=image)
+               cost=cost, **kw)
 
 
-def plot_tree(G, tree, show_cost=False, width=None, height=None, image=None):
+def plot_tree(G, tree, show_cost=False, **kw):
     """Plot the tree on graph G.
 
     Args:
@@ -322,12 +323,12 @@ def plot_tree(G, tree, show_cost=False, width=None, height=None, image=None):
     """
     cost = spanning_tree_cost(G, tree)
     plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
-               cost=cost, width=width, height=height, image=image)
+               cost=cost, **kw)
 
 
 def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
                           swaps=None, show_all_edges=True, show_labels=True,
-                          width=None, height=None, image=None):
+                          **kw):
     """Plot the graph G with iterations of edges, nodes, and tables.
 
     Args:
@@ -337,7 +338,7 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         tables (List): Tables at each iteration.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -490,7 +491,7 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
     # create layout
     layout = [[plot],
               [row(prev_button, next_button,
-                   max_width=width, sizing_mode='stretch_both')],
+                   max_width=plot.plot_width, sizing_mode='stretch_both')],
               [row(cost, done) if costs else row(done)]]
     if tables is not None:
         layout.insert(1, [table])
@@ -504,7 +505,7 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
     show(grid)
 
 
-def plot_dijkstras(G, source=0, width=None, height=None):
+def plot_dijkstras(G, source=0, **kw):
     """Plot Dijkstra's algorithm running on G.
 
     Args:
@@ -512,11 +513,10 @@ def plot_dijkstras(G, source=0, width=None, height=None):
         s (int): Source vertex to run the algorithm from.
     """
     nodes, edges, tables = dijkstras(G, s=source, iterations=True)
-    plot_graph_iterations(G, nodes=nodes, edges=edges, tables=tables,
-                          width=width, height=height)
+    plot_graph_iterations(G, nodes=nodes, edges=edges, tables=tables, **kw)
 
 
-def plot_mst_algorithm(G, alg, i=0, width=None, height=None):
+def plot_mst_algorithm(G, alg, i=0, **kw):
     """Plot the MST algorithm running on G.
 
     Args:
@@ -534,11 +534,10 @@ def plot_mst_algorithm(G, alg, i=0, width=None, height=None):
     for edge in edges:
         nodes.append(list(set([item for sublist in edge for item in sublist])))
     costs = [spanning_tree_cost(G, tree) for tree in edges]
-    plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
-                          width=width, height=height)
+    plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs, **kw)
 
 
-def plot_tsp_heuristic(G, alg, initial, width=None, height=None, image=None):
+def plot_tsp_heuristic(G, alg, initial, **kw):
     """Plot the TSP heuristic running on G.
 
     Args:
@@ -569,11 +568,11 @@ def plot_tsp_heuristic(G, alg, initial, width=None, height=None, image=None):
     costs = [tour_cost(G, tour) for tour in tours]
     plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
                           swaps=swaps, show_all_edges=False, show_labels=False,
-                          width=width, height=height, image=image)
+                          **kw)
     return tours[-1]
 
 
-def plot_etching_tour(G, tour, width=None, height=None, image=None):
+def plot_etching_tour(G, tour, **kw):
     """Plot the tour on the etching problem.
 
     Args:
@@ -596,7 +595,7 @@ def plot_etching_tour(G, tour, width=None, height=None, image=None):
         xs.append((G.nodes[tour[i]]['x_end'], G.nodes[tour[i+1]]['x_start']))
         ys.append((G.nodes[tour[i]]['y_end'], G.nodes[tour[i+1]]['y_start']))
 
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     cost_text = '%.1f' % tour_cost(G, tour)
     cost = Div(text=cost_text, width=plot.plot_width, align='center')
@@ -610,21 +609,21 @@ def plot_etching_tour(G, tour, width=None, height=None, image=None):
 
     # create layout
     grid = gridplot([[plot],[cost]],
-                    plot_width=width, plot_height=height,
+                    plot_width=plot.plot_width, plot_height=plot.plot_height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
     show(grid)
 
 
-def plot_create_tour(G, width=None, height=None, image=None):
+def plot_create_tour(G, **kw):
     """Plot in which you can create a tour.
 
     Args:
         G (nx.Graph): Networkx graph.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -654,17 +653,17 @@ def plot_create_tour(G, width=None, height=None, image=None):
                tour_src=tour_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+    show(_get_grid(plot, cost, error_msg, clicked))
 
 
-def plot_create_spanning_tree(G, width=None, height=None, image=None):
+def plot_create_spanning_tree(G, **kw):
     """Plot in which you can create a spanning tree.
 
     Args:
         G (nx.Graph): Networkx graph.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -692,10 +691,10 @@ def plot_create_spanning_tree(G, width=None, height=None, image=None):
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+    show(_get_grid(plot, cost, error_msg, clicked))
 
 
-def plot_assisted_prims(G, source=0, width=None, height=None, image=None):
+def plot_assisted_prims(G, source=0, **kw):
     """Plot in which the user creates an MST using Prim's algorithm.
 
     Args:
@@ -703,7 +702,7 @@ def plot_assisted_prims(G, source=0, width=None, height=None, image=None):
         source (int): Source vertex to run the algorithm from.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -738,17 +737,17 @@ def plot_assisted_prims(G, source=0, width=None, height=None, image=None):
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+    show(_get_grid(plot, cost, error_msg, clicked))
 
 
-def plot_assisted_kruskals(G, width=None, height=None, image=None):
+def plot_assisted_kruskals(G, **kw):
     """Plot in which the user creates an MST using Kruskal's algorithm.
 
     Args:
         G (nx.Graph): Networkx graph.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -782,17 +781,17 @@ def plot_assisted_kruskals(G, width=None, height=None, image=None):
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+    show(_get_grid(plot, cost, error_msg, clicked))
 
 
-def plot_assisted_reverse_kruskals(G, width=None, height=None, image=None):
+def plot_assisted_reverse_kruskals(G, **kw):
     """Plot in which the user creates an MST using reverse Kruskal's algorithm.
 
     Args:
         G (nx.Graph): Networkx graph.
     """
     G = G.copy()
-    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+    plot = _blank_plot(G, **kw)
 
     _set_edge_positions(G)
     _set_graph_colors(G)
@@ -838,4 +837,4 @@ def plot_assisted_reverse_kruskals(G, width=None, height=None, image=None):
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+    show(_get_grid(plot, cost, error_msg, clicked))
