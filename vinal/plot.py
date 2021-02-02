@@ -218,7 +218,8 @@ def _add_nodes(G, plot):
     return nodes_src, nodes_glyph
 
 
-def _add_edges(G, plot, show_labels=True):
+def _add_edges(G, plot, show_labels=True,
+               hover_line_color=TERTIARY_DARK_COLOR):
     """Add edges from G to the plot. Return the data source and glyphs.
 
     Args:
@@ -235,7 +236,7 @@ def _add_edges(G, plot, show_labels=True):
     edges_glyph = plot.multi_line(xs='xs', ys='ys',
                                   line_color='line_color',
                                   line_cap='round',
-                                  hover_line_color=TERTIARY_DARK_COLOR,
+                                  hover_line_color=hover_line_color,
                                   line_width=LINE_WIDTH,
                                   nonselection_line_alpha=1,
                                   level='image',
@@ -615,7 +616,7 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
     Args:
         G (nx.Graph): Networkx graph.
         create (string): {'tour', 'tree'}
-        assisted_algorithm (str): {'prims'}
+        assisted_algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
         source (int): Source vertex to run the algorithm from.
     """
     if create == 'tour':
@@ -636,7 +637,12 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
         nodes_src.data['fill_color'][source] = PRIMARY_DARK_COLOR
         nodes_src.data['line_color'][source] = PRIMARY_DARK_COLOR
     if show_all_edges:
-        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
+        if assisted_algorithm == 'reverse_kruskals':
+            color = TERTIARY_COLOR
+        else:
+            color = TERTIARY_DARK_COLOR
+        edges_src, edges_glyph = _add_edges(G, plot,show_labels=show_labels,
+                                            hover_line_color=color)
     else:
         edges_src = None
 
@@ -658,6 +664,16 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
         src_data['sorted_edges'] = edges
         src_data['forest'] = list(range(len(G)))
         src_data['index'] = [0]
+    elif assisted_algorithm == 'reverse_kruskals':
+        src_data['visited'] = list(range(len(G)))
+        src_data['unvisited'] = []
+        src_data['tree_edges'] = list(range(len(G.edges)))
+        edges = nx.get_edge_attributes(G,'weight')
+        edges = list(dict(sorted(edges.items(), key=lambda item: item[1], reverse=True)))
+        src_data['sorted_edges'] = edges
+        src_data['index'] = [0]
+        edges_src.data['line_color'] = [TERTIARY_DARK_COLOR]*len(G.edges())
+        nodes_src.data['fill_color'] = [PRIMARY_DARK_COLOR]*len(G)
 
     # build helpful objects to pass to Javascript
     if create == 'tree':
@@ -669,7 +685,7 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
             edge_ids[u][v] = i
             edge_ids[v][u] = i
             G_matrix[u][v] = G[u][v]['weight']
-            G_matrix[v][u] = G[u][v]['weight']
+            G_matrix[v][u] = G[v][u]['weight']
         src_data['edge_ids'] = edge_ids.tolist()
         G_matrix = G_matrix.tolist()
     else:
@@ -682,9 +698,15 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
     tour_src = ColumnDataSource(data={'edges_x': [],
                                       'edges_y': []})
     cost_matrix = ColumnDataSource(data={'G': G_matrix})
-    cost = Div(text='0.0', width=int(plot.plot_width/3), align='center')
+    if assisted_algorithm == 'reverse_kruskals':
+        cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
+        cost = Div(text=cost_text, width=int(plot.plot_width/3), align='center')
+        txt = ('[' + ','.join([str(x) for x in list(G.edges)]) + ']').replace(' ', '')
+        clicked = Div(text=txt, width=int(plot.plot_width/3), align='center')
+    else:
+        cost = Div(text='0.0', width=int(plot.plot_width/3), align='center')
+        clicked = Div(text='[]', width=int(plot.plot_width/3), align='center')
     error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
-    clicked = Div(text='[]', width=int(plot.plot_width/3), align='center')
     plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
               line_cap='round', line_width=LINE_WIDTH, level='image',
               source=tour_src)
@@ -701,6 +723,7 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
     var unvisited = source.data['unvisited']
     var tree_edges = source.data['tree_edges']
     var edge_ids = source.data['edge_ids']
+    var clicked_list = source.data['clicked']
 
     var i = source.data['last_index']
     var u = edges_src.data['u'][i]
@@ -763,6 +786,8 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
             error_msg.text = 'Edge not adjacent to the current tree.'
         }
     }
+
+    clicked_list = tree_edges
     """
 
     kruskals = """
@@ -797,6 +822,101 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
     }
 
     source.data['index'][0] = index
+    clicked_list = tree_edges
+    """
+
+    reverse_kruskals = """
+    var sorted_edges = source.data['sorted_edges']
+    var index = source.data['index'][0]
+
+    function is_connected(G) {
+        function fillArray(value, len) {
+            var a = [value];
+            while (a.length * 2 <= len) a = a.concat(a);
+            if (a.length < len) a = a.concat(a.slice(0, len - a.length));
+            return a;
+        }
+
+        var check = fillArray(false, G.length)
+        check[0] = true
+        var checked = [0]
+
+        while (checked.length > 0) {
+            var a = checked.shift()
+            for (let b = 0; b < G[a].length; b++) {
+                if (G[a][b] > 0 && !check[b]) {
+                    check[b] = true
+                    checked.push(b)
+                }
+            }
+        }
+
+        return check.every(function(x) {return x})
+    }
+
+    var a = sorted_edges[index][0]
+    var b = sorted_edges[index][1]
+    var tmp_w = G[a][b]
+    G[a][b] = 0
+    G[b][a] = 0
+    while (!is_connected(G) || !tree_edges.includes(edge_ids[a][b])) {
+        G[a][b] = tmp_w
+        G[b][a] = tmp_w
+        index += 1
+        a = sorted_edges[index][0]
+        b = sorted_edges[index][1]
+        tmp_w = G[a][b]
+        G[a][b] = 0
+        G[b][a] = 0
+    }
+    G[a][b] = tmp_w
+    G[b][a] = tmp_w
+    var max_val = tmp_w
+
+    var tmp_w = w
+    G[u][v] = 0
+    G[v][u] = 0
+
+    let e = tree_edges.indexOf(i)
+    if (e > -1) {
+        if (is_connected(G)) {
+            if (tmp_w == max_val) {
+                tree_edges.splice(e, 1);
+                if (u == a && v == b) {
+                    index += 1
+                }
+                edges_src.data['line_color'][i] = '""" + TERTIARY_COLOR + """'
+                var prev_cost = parseFloat(cost.text)
+                cost.text = (prev_cost - w).toFixed(1)
+                error_msg.text = ''
+            } else {
+                G[u][v] = tmp_w
+                G[v][u] = tmp_w
+                error_msg.text = 'Larger edge weight exists. Try ('
+                                  .concat(a.toString())
+                                  .concat(', ')
+                                  .concat(b.toString())
+                                  .concat(').')
+            }
+        } else {
+            G[u][v] = tmp_w
+            G[v][u] = tmp_w
+            error_msg.text = 'Removing this edge disconnects the graph.'
+        }
+    } else {
+        G[u][v] = tmp_w
+        G[v][u] = tmp_w
+        error_msg.text = 'Edge already removed.'
+    }
+
+    var u_list = edges_src.data['u']
+    var v_list = edges_src.data['v']
+    clicked_list = []
+    for (let i = 0; i < tree_edges.length; i++) {
+        var edge = tree_edges[i]
+        clicked_list.push([u_list[edge], v_list[edge]])
+    }
+    source.data['index'][0] = index
     """
 
     tree_update = """
@@ -805,10 +925,10 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
     }
 
     clicked.text = '['
-    for (let i = 0; i < tree_edges.length; i++) {
-        var edge_str = tree_edges[i].join(',')
+    for (let i = 0; i < clicked_list.length; i++) {
+        var edge_str = clicked_list[i].join(',')
         clicked.text = clicked.text.concat('(').concat(edge_str).concat(')')
-        if (!(i == tree_edges.length - 1)) {
+        if (!(i == clicked_list.length - 1)) {
             clicked.text = clicked.text.concat(',')
         }
     }
@@ -872,6 +992,8 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
             on_click = check_done + load_data + prims % select_edge + tree_update
         elif assisted_algorithm == 'kruskals':
             on_click = check_done + load_data + kruskals % select_edge + tree_update
+        elif assisted_algorithm == 'reverse_kruskals':
+            on_click = check_done + load_data + reverse_kruskals + tree_update
 
     renderers = [edges_glyph if create == 'tree' else nodes_glyph]
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
