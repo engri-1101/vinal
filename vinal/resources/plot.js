@@ -359,4 +359,90 @@ function create_tour_on_click () {
     nodes_src.change.emit()
 }
 
+function dijkstras() {
+    var dist = source.data['dist']
+    var prev = source.data['prev']
+    var S = source.data['settled']
+    var F = source.data['frontier']
+
+    F.sort(function(a,b) {return dist[a] - dist[b]})
+
+    if (F.includes(i)) {
+        if (dist[i] == dist[F[0]]) {
+            var f = i
+            F.splice(F.indexOf(f), 1)
+            S.push(f)
+            for (let w = 0; w < G.length; w++) {
+                if (G[f][w] != 0) {
+                    if (!S.includes(w) && !F.includes(w)) {
+                        dist[w] = dist[f] + G[f][w]
+                        prev[w] = f
+                        F.push(w)
+                        var k = edge_ids[w][f]
+                        edges_src.data['line_color'][k] = TERTIARY_DARK_COLOR
+                    } else {
+                        if (dist[f] + G[f][w] < dist[w]) {
+                            var k = edge_ids[prev[w]][w]
+                            edges_src.data['line_color'][k] = TERTIARY_COLOR
+
+                            dist[w] = dist[f] + G[f][w]
+                            prev[w] = f
+
+                            var k = edge_ids[f][w]
+                            edges_src.data['line_color'][k] = TERTIARY_DARK_COLOR
+                        }
+                    }
+                }
+            }
+            error_msg.text = ''
+        } else {
+            error_msg.text = 'A closer frontier node exists.'
+        }
+    } else {
+        error_msg.text = 'This node is not in the frontier set.'
+    }
+
+    for (let i = 0; i < G.length; i++) {
+        // Highlight settled and frontier nodes
+        if (S.includes(i)) {
+            nodes_src.data['fill_color'][i] = PRIMARY_DARK_COLOR
+            nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
+        } else if (F.includes(i)) {
+            nodes_src.data['fill_color'][i] = SECONDARY_LIGHT_COLOR
+            nodes_src.data['line_color'][i] = SECONDARY_DARK_COLOR
+        } else {
+            nodes_src.data['fill_color'][i] = PRIMARY_LIGHT_COLOR
+            nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
+        }
+
+        // Update table source
+        var dist_text
+        var prev_text
+        if (isFinite(dist[i])) {
+            dist_text = dist[i].toFixed(1)
+        } else {
+            dist_text = 'inf'
+        }
+        if (S.includes(i)) {
+            dist_text = dist_text.concat('*')
+        }
+
+        if (isNaN(prev[i])) {
+            prev_text = '-'
+        } else {
+            prev_text = prev[i]
+        }
+        table_src.data[i.toString()] = [dist_text, prev_text]
+    }
+
+    if (F.length == 0) {
+        error_msg.text = 'done.'
+    }
+
+    source.change.emit()
+    nodes_src.change.emit()
+    edges_src.change.emit()
+    table_src.change.emit()
+}
+
 // BEGIN FUNCTION CALLING

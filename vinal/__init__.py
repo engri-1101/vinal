@@ -16,4 +16,5 @@ from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
 from .plot import (plot_graph, plot_graph_iterations, plot_tour,
                    plot_tree, plot_dijkstras, plot_mst_algorithm,
                    plot_tsp_heuristic, plot_etching_tour, plot_create_tour,
-                   plot_create_spanning_tree, plot_assisted_mst_algorithm)
+                   plot_create_spanning_tree, plot_assisted_mst_algorithm,
+                   plot_assisted_dijkstras)

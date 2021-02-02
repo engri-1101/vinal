@@ -7,7 +7,8 @@ __author__ = 'Henry Robbins'
 __all__ = ['plot_graph', 'plot_graph_iterations', 'plot_tour',
            'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
            'plot_tsp_heuristic', 'plot_etching_tour', 'plot_create_tour',
-           'plot_create_spanning_tree', 'plot_assisted_mst_algorithm']
+           'plot_create_spanning_tree', 'plot_assisted_mst_algorithm',
+           'plot_assisted_dijkstras']
 
 
 import numpy as np
@@ -232,7 +233,7 @@ def _get_edge_src_maps(G, edges_src):
 
 def _add_tools(plot, on_click, nodes_glyph, renderers, source, edges_src=None,
                nodes_src=None, tour_src=None, cost_matrix=None, cost=None,
-               error_msg=None, clicked=None):
+               error_msg=None, clicked=None, table_src=None):
     """Add hover and tap tools to the plot."""
     on_hover_code = "source.data['last_index'] = cb_data.index.indices[0]"
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
@@ -248,7 +249,8 @@ def _add_tools(plot, on_click, nodes_glyph, renderers, source, edges_src=None,
                                                        cost_matrix=cost_matrix,
                                                        cost=cost,
                                                        error_msg=error_msg,
-                                                       clicked=clicked),
+                                                       clicked=clicked,
+                                                       table_src=table_src),
                                              code=on_click),
                            renderers=[renderers]))
 
@@ -769,3 +771,73 @@ def plot_assisted_mst_algorithm(G, algorithm, source=None, **kw):
                error_msg=error_msg, clicked=clicked)
 
     show(_get_grid(plot, cost, error_msg, clicked))
+
+
+def plot_assisted_dijkstras(G, s=0, **kw):
+    """Plot in which the user creates a shortest path tree from s.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        s (int): s vertex to run the dijkstras from.
+    """
+    G = G.copy()
+    plot = _blank_plot(G, **kw)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    nodes_src.data['fill_color'][s] = SECONDARY_COLOR
+    nodes_src.data['line_color'][s] = SECONDARY_DARK_COLOR
+    edges_src, edges_glyph = _add_edges(G, plot, show_labels=True)
+
+    src_data = _get_blank_src_data(G)
+    dist = [float('inf')]*len(G)
+    dist[s] = 0
+    src_data['dist'] = dist
+    src_data['prev'] = [float('nan')]*len(G)
+    src_data['settled'] = []
+    src_data['frontier'] = [s]
+
+    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    src_data['edge_ids'] = edge_ids
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
+
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=src_data)
+
+    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
+
+    table_data = {str(i): ['inf', '-'] for i in range(len(G))}
+    table_data['index'] = ['label', 'prev']
+
+    table_data[str(s)][1] = '0'
+    table_src = ColumnDataSource(data=table_data)
+    columns = [TableColumn(field='index', title='')]
+    for i in range(len(G)):
+        columns.append(TableColumn(field=str(i), title=str(i)))
+    table = DataTable(source=table_src, columns=columns, height=80,
+                      width_policy='fit', max_width=plot.plot_width,
+                      width=plot.plot_width, background='white',
+                      index_position=None, editable=False,
+                      reorderable=False, sortable=False, selectable=False)
+
+    code = 'check_done()\nload_data()\ndijkstras()\n'
+    on_click = JS_CODE + code
+
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderers=nodes_glyph, source=source, nodes_src=nodes_src,
+               edges_src=edges_src, cost_matrix=cost_matrix,
+               error_msg=error_msg, table_src=table_src)
+
+    grid = gridplot([[plot],
+                     [table],
+                     [row(error_msg)]],
+                    plot_width=plot.plot_width,
+                    plot_height=plot.plot_height,
+                    toolbar_location=None,
+                    toolbar_options={'logo': None})
+
+    show(grid)
