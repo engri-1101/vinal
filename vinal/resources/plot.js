@@ -37,7 +37,6 @@ function increment_iteration() {
     iteration = parseInt(n.text)
 }
 
-
 function decrement_iteration() {
     if ((parseInt(n.text) - 1) >= 0) {
         n.text = (parseInt(n.text) - 1).toString()
@@ -91,10 +90,6 @@ function swaps_update() {
     swaps_src.change.emit()
 }
 
-function on_hover() {
-    source.data['last_index'] = cb_data.index.indices[0]
-}
-
 function check_done() {
     if (error_msg.text == 'done.') {
         return;
@@ -130,6 +125,7 @@ function select_edge() {
     }
     edges_src.data['line_color'][i] = TERTIARY_DARK_COLOR
     tree_edges.push([u,v])
+    clicked_list = tree_edges
     var prev_cost = parseFloat(cost.text)
     cost.text = (prev_cost + w).toFixed(1)
     error_msg.text = ''
@@ -169,8 +165,6 @@ function prims() {
             error_msg.text = 'Edge not adjacent to the current tree.'
         }
     }
-
-    clicked_list = tree_edges
 }
 
 function kruskals() {
@@ -205,7 +199,6 @@ function kruskals() {
     }
 
     source.data['index'][0] = index
-    clicked_list = tree_edges
 }
 
 function reverse_kruskals() {
@@ -322,7 +315,7 @@ function tree_update() {
     edges_src.change.emit()
 }
 
-function  create_tour_on_click () {
+function create_tour_on_click () {
     var v = source.data['last_index']
     var n = nodes_src.data['line_color'].length
     var tour = source.data['clicked']

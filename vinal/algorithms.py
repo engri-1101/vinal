@@ -7,7 +7,7 @@ __author__ = 'Henry Robbins'
 __all__ = ['dijkstras', 'prims', 'kruskals', 'reverse_kruskals',
            'spanning_tree_cost', 'neighbor', 'random_neighbor',
            'nearest_neighbor', 'insertion', 'nearest_insertion',
-           'furthest_insertion' 'two_opt', 'solve_tsp', 'optimal_tour',
+           'furthest_insertion', 'two_opt', 'solve_tsp', 'optimal_tour',
            'tour_cost']
 
 
@@ -40,7 +40,7 @@ def dijkstras(G, s=0, iterations=False):
         # asterisk on label of 'settled nodes'
         marks = pd.Series(['*'*(i in S) for i in range(len(df['label']))])
         df['label'] = df['label'].astype(str) + marks.astype(str)
-        df['prev'] = df['prev'].apply(lambda x: '-' if math.isnan(x) else int(x))
+        df['prev'] = df['prev'].apply(lambda x: '-' if math.isnan(x) else x)
         df = df.T
         df.columns = df.columns.astype(str)
         return df.reset_index()
@@ -144,7 +144,8 @@ def reverse_kruskals(G, iterations=False):
         iterations (bool): True iff all iterations should be returned.
     """
     edges = nx.get_edge_attributes(G,'weight')
-    edges = list(dict(sorted(edges.items(), key=lambda item: item[1], reverse=True)))
+    edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
+    edges = list(dict(edges))
     G_prime = nx.Graph()
     for i in range(len(G)):
         G_prime.add_node(i)
@@ -254,7 +255,7 @@ def insertion(G, initial=[0,1,0], nearest=True, iterations=False):
     # choose next node from unvisited
     while len(unvisited) > 0:
         d = A[:,tour[-1]].min(axis=1)
-        d = {i : d[i] for i in range(len(d)) if i in unvisited}
+        d = {i: d[i] for i in range(len(d)) if i in unvisited}
         if nearest:
             min_val = min(d.values())
             possible = [k for k, v in d.items() if v == min_val]

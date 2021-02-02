@@ -4,9 +4,11 @@ This module contains various functions to plot graphs and algorithms.
 """
 
 __author__ = 'Henry Robbins'
-__all__ = ['plot_graph', 'plot_create', 'plot_graph_iterations', 'plot_tour',
+__all__ = ['plot_graph', 'plot_graph_iterations', 'plot_tour',
            'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
-           'plot_tsp_heuristic', 'plot_etching_tour']
+           'plot_tsp_heuristic', 'plot_etching_tour', 'plot_create_tour',
+           'plot_create_spanning_tree', 'plot_assisted_prims',
+           'plot_assisted_kruskals', 'plot_assisted_reverse_kruskals']
 
 
 import numpy as np
@@ -47,6 +49,8 @@ NODE_SIZE = 11
 NODE_LINE_WIDTH = 3
 LINE_WIDTH = 5
 
+JS_CODE = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
+
 
 def _graph_range(x, y):
     """Return graph range containing the given points."""
@@ -64,7 +68,7 @@ def _blank_plot(G, plot_width=None, plot_height=None, image=None):
     if image is not None:
         im = Image.open(image)
         max_x, max_y = im.size
-        min_x, min_y = 0 ,0
+        min_x, min_y = 0,0
     else:
         if 'x_start' in list(G.nodes[0]):
             x = (list(nx.get_node_attributes(G,'x_start').values()) +
@@ -188,6 +192,75 @@ def _add_edges(G, plot, show_labels=True,
         plot.add_layout(labels)
 
     return edges_src, edges_glyph
+
+
+def _get_create_divs(plot, cost_txt='0.0', click_txt='[]'):
+    """Return the Divs shown by plots in which a tour or tree is created.
+
+    Args:
+        cost_text (str, optional): [description]. Defaults to '0.0'.
+        clicked_text (str, optional): [description]. Defaults to '[]'.
+        errog_msg_text (str, optional): [description]. Defaults to ''.
+    """
+    cost = Div(text=cost_txt, width=int(plot.plot_width/3), align='center')
+    clicked = Div(text=click_txt, width=int(plot.plot_width/3), align='center')
+    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
+    return cost, clicked, error_msg
+
+
+def _get_blank_src_data(G):
+    """Return blank source data for plotting the given graph."""
+    return {'visited': [],
+            'unvisited': list(range(len(G))),
+            'tree_edges': [],
+            'edge_ids': [],
+            'clicked': []}
+
+
+def _get_edge_src_maps(G, edges_src):
+    """TODO: Need good doc here."""
+    edge_ids = np.zeros((len(G), len(G)))
+    G_matrix = np.zeros((len(G), len(G)))
+    edge_pairs = list(zip(edges_src.data['u'], edges_src.data['v']))
+    for i in range(len(edge_pairs)):
+        u,v = edge_pairs[i]
+        edge_ids[u][v] = i
+        edge_ids[v][u] = i
+        G_matrix[u][v] = G[u][v]['weight']
+        G_matrix[v][u] = G[v][u]['weight']
+    return edge_ids.tolist(), G_matrix.tolist()
+
+
+def _add_tools(plot, on_click, nodes_glyph, renderers, source, edges_src=None,
+               nodes_src=None, tour_src=None, cost_matrix=None, cost=None,
+               error_msg=None, clicked=None):
+    """Add hover and tap tools to the plot."""
+    on_hover_code = "source.data['last_index'] = cb_data.index.indices[0]"
+    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
+                             renderers=[nodes_glyph]),
+                   HoverTool(tooltips=None,
+                             callback=CustomJS(args=dict(source=source),
+                                               code=on_hover_code),
+                             renderers=[renderers]),
+                   TapTool(callback=CustomJS(args=dict(source=source,
+                                                       edges_src=edges_src,
+                                                       nodes_src=nodes_src,
+                                                       tour_src=tour_src,
+                                                       cost_matrix=cost_matrix,
+                                                       cost=cost,
+                                                       error_msg=error_msg,
+                                                       clicked=clicked),
+                                             code=on_click),
+                           renderers=[renderers]))
+
+
+def _get_grid(plot, cost, error_msg, clicked, width, height):
+    """Return gridplot with plot and divs"""
+    return gridplot([[plot],
+                     [row(cost,error_msg,clicked)]],
+                    plot_width=width, plot_height=height,
+                    toolbar_location=None,
+                    toolbar_options={'logo': None})
 
 
 def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
@@ -382,7 +455,7 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         args_dict['swaps_src'] = swaps_src
 
     # Javascript
-    btn_code = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
+    btn_code = JS_CODE
     next_btn_code = btn_code + 'increment_iteration()\ndone_update()\n'
     prev_btn_code = btn_code + 'decrement_iteration()\ndone_update()\n'
     if costs is not None:
@@ -490,7 +563,9 @@ def plot_tsp_heuristic(G, alg, initial, width=None, height=None, image=None):
     elif alg == '2-OPT':
         tours, swaps = two_opt(G, tour=initial, iterations=True)
     nodes = tours
-    edges = [[(tour[i], tour[i+1]) for i in range(len(tour)-1)] for tour in tours]
+    edges = []
+    for tour in tours:
+        edges.append([(tour[i], tour[i+1]) for i in range(len(tour)-1)])
     costs = [tour_cost(G, tour) for tour in tours]
     plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
                           swaps=swaps, show_all_edges=False, show_labels=False,
@@ -536,30 +611,58 @@ def plot_etching_tour(G, tour, width=None, height=None, image=None):
     # create layout
     grid = gridplot([[plot],[cost]],
                     plot_width=width, plot_height=height,
-                    toolbar_location = None,
+                    toolbar_location=None,
                     toolbar_options={'logo': None})
 
     show(grid)
 
 
-def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
-                height=None, image=None):
-    """Plot in which you can create a spanning tree, shortest path tree, or
-    tour freely or assisted by an algorithm.
+def plot_create_tour(G, width=None, height=None, image=None):
+    """Plot in which you can create a tour.
 
     Args:
         G (nx.Graph): Networkx graph.
-        create (string): {'tour', 'tree'}
-        assisted_algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
-        source (int): Source vertex to run the algorithm from.
     """
-    if create == 'tour':
-        show_all_edges = False
-        show_labels = False
-    elif create == 'tree':
-        show_all_edges = True
-        show_labels = True
+    G = G.copy()
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
 
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=_get_blank_src_data(G))
+
+    G_matrix = nx.adjacency_matrix(G).todense().tolist()
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
+
+    tour_src = ColumnDataSource(data={'edges_x': [],
+                                      'edges_y': []})
+    plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
+              line_cap='round', line_width=LINE_WIDTH, level='image',
+              source=tour_src)
+
+    cost, clicked, error_msg = _get_create_divs(plot)
+
+    code = JS_CODE
+    on_click = code + 'check_done()\ncreate_tour_on_click()\n'
+
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderers=nodes_glyph, source=source, nodes_src=nodes_src,
+               tour_src=tour_src, cost_matrix=cost_matrix, cost=cost,
+               error_msg=error_msg, clicked=clicked)
+
+    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+
+
+def plot_create_spanning_tree(G, width=None, height=None, image=None):
+    """Plot in which you can create a spanning tree.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+    """
     G = G.copy()
     plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
 
@@ -567,124 +670,172 @@ def plot_create(G, create, assisted_algorithm=None, source=None, width=None,
     _set_graph_colors(G)
 
     nodes_src, nodes_glyph = _add_nodes(G, plot)
-    if source is not None:
-        nodes_src.data['fill_color'][source] = PRIMARY_DARK_COLOR
-        nodes_src.data['line_color'][source] = PRIMARY_DARK_COLOR
-    if show_all_edges:
-        if assisted_algorithm == 'reverse_kruskals':
-            color = TERTIARY_COLOR
-        else:
-            color = TERTIARY_DARK_COLOR
-        edges_src, edges_glyph = _add_edges(G, plot,show_labels=show_labels,
-                                            hover_line_color=color)
-    else:
-        edges_src = None
+    edges_src, edges_glyph = _add_edges(G, plot, show_labels=True)
 
-    # pre-processing
-    src_data = {'visited': [],
-                'unvisited': list(range(len(G))),
-                'tree_edges': [],
-                'edge_ids': [],
-                'clicked': []}
-
-    if assisted_algorithm == 'prims':
-        unvisited = list(range(len(G)))
-        unvisited.remove(source)
-        src_data['visited'] = [source]
-        src_data['unvisited'] = unvisited
-    elif assisted_algorithm == 'kruskals':
-        edges = nx.get_edge_attributes(G,'weight')
-        edges = list(dict(sorted(edges.items(), key=lambda item: item[1])))
-        src_data['sorted_edges'] = edges
-        src_data['forest'] = list(range(len(G)))
-        src_data['index'] = [0]
-    elif assisted_algorithm == 'reverse_kruskals':
-        src_data['visited'] = list(range(len(G)))
-        src_data['unvisited'] = []
-        src_data['tree_edges'] = list(range(len(G.edges)))
-        edges = nx.get_edge_attributes(G,'weight')
-        edges = list(dict(sorted(edges.items(), key=lambda item: item[1], reverse=True)))
-        src_data['sorted_edges'] = edges
-        src_data['index'] = [0]
-        edges_src.data['line_color'] = [TERTIARY_DARK_COLOR]*len(G.edges())
-        nodes_src.data['fill_color'] = [PRIMARY_DARK_COLOR]*len(G)
-
-    # build helpful objects to pass to Javascript
-    if create == 'tree':
-        edge_ids = np.zeros((len(G), len(G)))
-        G_matrix = np.zeros((len(G), len(G)))
-        edge_pairs = list(zip(edges_src.data['u'], edges_src.data['v']))
-        for i in range(len(edge_pairs)):
-            u,v = edge_pairs[i]
-            edge_ids[u][v] = i
-            edge_ids[v][u] = i
-            G_matrix[u][v] = G[u][v]['weight']
-            G_matrix[v][u] = G[v][u]['weight']
-        src_data['edge_ids'] = edge_ids.tolist()
-        G_matrix = G_matrix.tolist()
-    else:
-        G_matrix = nx.adjacency_matrix(G).todense().tolist()
+    src_data = _get_blank_src_data(G)
+    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    src_data['edge_ids'] = edge_ids
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
 
     # docs indicate that each value should be of the same length but this works
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         source = ColumnDataSource(data=src_data)
-    tour_src = ColumnDataSource(data={'edges_x': [],
-                                      'edges_y': []})
+
+    cost, clicked, error_msg = _get_create_divs(plot)
+
+    code = JS_CODE
+    on_click = code + "check_done()\nload_data()\nselect_edge()\ntree_update()"
+
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderers=edges_glyph, source=source, nodes_src=nodes_src,
+               edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
+               error_msg=error_msg, clicked=clicked)
+
+    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+
+
+def plot_assisted_prims(G, source=0, width=None, height=None, image=None):
+    """Plot in which the user creates an MST using Prim's algorithm.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        source (int): Source vertex to run the algorithm from.
+    """
+    G = G.copy()
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    nodes_src.data['fill_color'][source] = PRIMARY_DARK_COLOR
+    nodes_src.data['line_color'][source] = PRIMARY_DARK_COLOR
+    edges_src, edges_glyph = _add_edges(G, plot, show_labels=True)
+
+    src_data = _get_blank_src_data(G)
+    unvisited = list(range(len(G)))
+    unvisited.remove(source)
+    src_data['visited'] = [source]
+    src_data['unvisited'] = unvisited
+
+    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    src_data['edge_ids'] = edge_ids
     cost_matrix = ColumnDataSource(data={'G': G_matrix})
-    if assisted_algorithm == 'reverse_kruskals':
-        cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
-        cost = Div(text=cost_text, width=int(plot.plot_width/3), align='center')
-        txt = ('[' + ','.join([str(x) for x in list(G.edges)]) + ']').replace(' ', '')
-        clicked = Div(text=txt, width=int(plot.plot_width/3), align='center')
-    else:
-        cost = Div(text='0.0', width=int(plot.plot_width/3), align='center')
-        clicked = Div(text='[]', width=int(plot.plot_width/3), align='center')
-    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
-    plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
-              line_cap='round', line_width=LINE_WIDTH, level='image',
-              source=tour_src)
 
-    code = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=src_data)
 
-    if create == 'tour':
-        on_click = code + 'check_done()\ncreate_tour_on_click()\n'
-    else:
-        code = code + 'check_done()\nload_data()\n'
-        if assisted_algorithm is None:
-            code += 'select_edge()\n'
-        elif assisted_algorithm == 'prims':
-            code += 'prims()\n'
-        elif assisted_algorithm == 'kruskals':
-            code += 'kruskals()\n'
-        elif assisted_algorithm == 'reverse_kruskals':
-            code +='reverse_kruskals()\n'
-        code += 'tree_update()\n'
-        on_click = code
+    cost, clicked, error_msg = _get_create_divs(plot)
 
-    renderers = [edges_glyph if create == 'tree' else nodes_glyph]
-    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
-                             renderers=[nodes_glyph]),
-                   HoverTool(tooltips=None,
-                             callback=CustomJS(args=dict(source=source),
-                                               code=ON_HOVER),
-                             renderers=renderers),
-                   TapTool(callback=CustomJS(args=dict(source=source,
-                                                       edges_src=edges_src,
-                                                       nodes_src=nodes_src,
-                                                       tour_src=tour_src,
-                                                       cost_matrix=cost_matrix,
-                                                       cost=cost,
-                                                       error_msg=error_msg,
-                                                       clicked=clicked),
-                                             code=on_click),
-                           renderers=renderers))
+    code = JS_CODE
+    on_click = code + 'check_done()\nload_data()\nprims()\ntree_update()\n'
 
-    # create layout
-    grid = gridplot([[plot],
-                     [row(cost,error_msg,clicked)]],
-                    plot_width=width, plot_height=height,
-                    toolbar_location=None,
-                    toolbar_options={'logo': None})
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderers=edges_glyph, source=source, nodes_src=nodes_src,
+               edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
+               error_msg=error_msg, clicked=clicked)
 
-    show(grid)
+    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+
+
+def plot_assisted_kruskals(G, width=None, height=None, image=None):
+    """Plot in which the user creates an MST using Kruskal's algorithm.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+    """
+    G = G.copy()
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    edges_src, edges_glyph = _add_edges(G, plot, show_labels=True)
+
+    src_data = _get_blank_src_data(G)
+    edges = nx.get_edge_attributes(G,'weight')
+    edges = list(dict(sorted(edges.items(), key=lambda item: item[1])))
+    src_data['sorted_edges'] = edges
+    src_data['forest'] = list(range(len(G)))
+    src_data['index'] = [0]
+
+    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    src_data['edge_ids'] = edge_ids
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
+
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=src_data)
+
+    cost, clicked, error_msg = _get_create_divs(plot)
+
+    code = JS_CODE
+    on_click = code + 'check_done()\nload_data()\nkruskals()\ntree_update()\n'
+
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderers=edges_glyph, source=source, nodes_src=nodes_src,
+               edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
+               error_msg=error_msg, clicked=clicked)
+
+    show(_get_grid(plot, cost, error_msg, clicked, width, height))
+
+
+def plot_assisted_reverse_kruskals(G, width=None, height=None, image=None):
+    """Plot in which the user creates an MST using reverse Kruskal's algorithm.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+    """
+    G = G.copy()
+    plot = _blank_plot(G, plot_width=width, plot_height=height, image=image)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    edges_src, edges_glyph = _add_edges(G, plot,show_labels=True,
+                                        hover_line_color=TERTIARY_COLOR)
+
+    src_data = _get_blank_src_data(G)
+    src_data['visited'] = list(range(len(G)))
+    src_data['unvisited'] = []
+    src_data['tree_edges'] = list(range(len(G.edges)))
+    edges = nx.get_edge_attributes(G,'weight')
+    edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
+    edges = list(dict(edges))
+    src_data['sorted_edges'] = edges
+    src_data['index'] = [0]
+    edges_src.data['line_color'] = [TERTIARY_DARK_COLOR]*len(G.edges())
+    nodes_src.data['fill_color'] = [PRIMARY_DARK_COLOR]*len(G)
+
+    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    src_data['edge_ids'] = edge_ids
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
+
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=src_data)
+
+    cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
+
+    clicked_edges = [str(x).replace(' ', '') for x in list(G.edges)]
+    click_txt = '[' + ','.join(clicked_edges) + ']'
+
+    cost, clicked, error_msg = _get_create_divs(plot, cost_txt=cost_text,
+                                                click_txt=click_txt)
+
+    code = JS_CODE
+    on_click = code + 'check_done()\nload_data()\nreverse_kruskals()\ntree_update()\n'
+
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderers=edges_glyph, source=source, nodes_src=nodes_src,
+               edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
+               error_msg=error_msg, clicked=clicked)
+
+    show(_get_grid(plot, cost, error_msg, clicked, width, height))
