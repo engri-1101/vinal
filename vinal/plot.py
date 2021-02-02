@@ -17,14 +17,16 @@ import networkx as nx
 import warnings
 from PIL import Image
 from pkg_resources import resource_stream
+from typing import List, Tuple, Dict, Union
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
                          tour_cost)
-from bokeh.plotting import figure
+from bokeh.plotting import figure, Figure
 from bokeh.io import show
 from bokeh.models.widgets.markups import Div
 from bokeh.models.widgets.tables import TableColumn, DataTable
-from bokeh.layouts import row, gridplot
+from bokeh.models.renderers import GlyphRenderer
+from bokeh.layouts import row, gridplot, GridBox
 from bokeh.models import (HoverTool, TapTool, ColumnDataSource, LabelSet,
                           Button, CustomJS)
 
@@ -52,19 +54,43 @@ LINE_WIDTH = 5
 JS_CODE = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
 
 
-def _graph_range(x, y):
-    """Return graph range containing the given points."""
+def _graph_range(x:List[float], y:List[float]) -> List[float]:
+    """Return x and y ranges that comfortably contain the given points.
+
+    Args:
+        x (List[float]): List of x-coordinates of the points.
+        y (List[float]): List of y-coordinates of the points.
+
+    Returns:
+        List[float]: x-range (min_x, max_x) and y-range (min_y, max_y).
+    """
     min_x, max_x = min(x), max(x)
     x_margin = 0.085*(max_x - min_x)
     min_x, max_x = min_x - x_margin, max_x + x_margin
     min_y, max_y = min(y), max(y)
     y_margin = 0.085*(max_y - min_y)
     min_y, max_y = min_y - y_margin, max_y + y_margin
-    return min_x, max_x, min_y, max_y
+    return (min_x, max_x, min_y, max_y)
 
 
-def _blank_plot(G, width=None, height=None, image=None):
-    """Return a blank bokeh plot."""
+def _blank_plot(G:nx.Graph,
+                width:int = None,
+                height:int = None,
+                image:str = None) -> Figure:
+    """Return a blank bokeh plot.
+
+    If an image is provided, the dimensions of the image form the x and y range
+    of the plot. Otherwise, these are computed to make all nodes visible.
+
+    Args:
+        G (nx.Graph): Graph to be plotted on this blank plot.
+        width (int, optional): Plot width. Defaults to None.
+        height (int, optional): Plot height. Defaults to None.
+        image (str, optional): Path to image file. Defaults to None.
+
+    Returns:
+        Figure: Blank bokeh plot.
+    """
     if image is not None:
         im = Image.open(image)
         max_x, max_y = im.size
@@ -100,8 +126,13 @@ def _blank_plot(G, width=None, height=None, image=None):
     return plot
 
 
-def _add_image(plot, image):
-    """Add an image to the background of the plot."""
+def _add_image(plot:Figure, image:str):
+    """Add an image to the background of the plot.
+
+    Args:
+        plot (Figure): Plot to add this image to.
+        image (str): Path to image.
+    """
     plot.image_url(url=[image],
                    x=plot.x_range.start,
                    y=plot.y_range.end,
@@ -110,25 +141,39 @@ def _add_image(plot, image):
                    level='image')
 
 
-def _edge_positions(G, edges, ret='dict'):
-    """Return positional data for the given edges on graph G."""
+def _edge_positions(G:nx.Graph,
+                    edges:List[Tuple[float]]) -> Dict[Tuple[int], float]:
+    """Return positional data for the edges of the graph.
+
+    Args:
+        G (nx.Graph): Graph (nodes must have pos attributes 'x' and 'y').
+        edges (List[Tuple[float]]): Edges to compute positional data for.
+
+    Returns:
+        Dict[Tuple[int], float]: Dictionary from edges to positions
+    """
     xs = {(u,v): (G.nodes[u]['x'], G.nodes[v]['x']) for u,v in edges}
     ys = {(u,v): (G.nodes[u]['y'], G.nodes[v]['y']) for u,v in edges}
-    if ret == 'dict':
-        return xs, ys
-    else:
-        return list(xs.values()), list(ys.values())
+    return xs, ys
 
 
-def _set_edge_positions(G):
-    """Add edge attribute with positional data."""
+def _set_edge_positions(G:nx.Graph):
+    """Add edge attribute with positional data.
+
+    Args:
+        G (nx.Graph): Graph to add positional attributes to.
+    """
     xs, ys = _edge_positions(G, G.edges)
     nx.set_edge_attributes(G, xs, 'xs')
     nx.set_edge_attributes(G, ys, 'ys')
 
 
-def _set_graph_colors(G):
-    """Add node/edge attribute with color data. Highlight edges."""
+def _set_graph_colors(G:nx.Graph):
+    """Add node/edge attribute with color data. Highlight edges.
+
+    Args:
+        G (nx.Graph): Graph to add color attributes to.
+    """
     for u in G.nodes:
         G.nodes[u]['line_color'] = PRIMARY_DARK_COLOR
         G.nodes[u]['line_width'] = NODE_LINE_WIDTH
@@ -137,12 +182,16 @@ def _set_graph_colors(G):
         G[u][v]['line_color'] = TERTIARY_COLOR
 
 
-def _add_nodes(G, plot):
-    """Add nodes from G to the plot. Return the data source and glyphs.
+def _add_nodes(G:nx.Graph,
+               plot:Figure) -> Union[ColumnDataSource, GlyphRenderer]:
+    """Add nodes from G to the plot.
 
     Args:
         G (nx.Graph): Networkx graph.
         plot (figure): Plot to add the nodes to.
+
+    Returns:
+        Union[ColumnDataSource, GlyphRenderer]: node source and glyphs.
     """
     nodes_df = pd.DataFrame([G.nodes[u] for u in sorted(G.nodes())])
     nodes_src = ColumnDataSource(data=nodes_df.to_dict(orient='list'))
@@ -152,17 +201,25 @@ def _add_nodes(G, plot):
                               line_width='line_width',
                               nonselection_fill_alpha=1,
                               nonselection_line_alpha=1, source=nodes_src)
+
     return nodes_src, nodes_glyph
 
 
-def _add_edges(G, plot, show_labels=True,
-               hover_line_color=TERTIARY_DARK_COLOR):
-    """Add edges from G to the plot. Return the data source and glyphs.
+def _add_edges(G:nx.Graph,
+               plot:Figure,
+               show_labels:bool = True,
+               hover_line_color:str = TERTIARY_DARK_COLOR
+               ) -> Union[ColumnDataSource, GlyphRenderer]:
+    """Add edges from G to the plot.
 
     Args:
         G (nx.Graph): Networkx graph.
         plot (figure): Plot to add the edges to.
         show_labels (bool): True iff each edge should be labeled.
+        hover_line_color (str): Color of the edges when hovering over them.
+
+    Returns:
+        Union[ColumnDataSource, GlyphRenderer]: edge source and glyphs.
     """
     edges_df = pd.DataFrame([G[u][v] for u,v in G.edges()])
     u,v = zip(*[(u,v) for u,v in G.edges])
@@ -194,22 +251,31 @@ def _add_edges(G, plot, show_labels=True,
     return edges_src, edges_glyph
 
 
-def _get_create_divs(plot, cost_txt='0.0', click_txt='[]'):
+def _get_create_divs(plot:Figure,
+                     cost_txt:str = '0.0',
+                     click_txt:str = '[]') -> Tuple[Div]:
     """Return the Divs shown by plots in which a tour or tree is created.
 
     Args:
-        cost_text (str, optional): [description]. Defaults to '0.0'.
-        clicked_text (str, optional): [description]. Defaults to '[]'.
-        errog_msg_text (str, optional): [description]. Defaults to ''.
+        plot (Figure): The plot to which these Divs are added.
+        cost_text (str, optional): Current cost of solution. Defaults to '0.0'.
+        clicked_text (str, optional): Clicked objects. Defaults to '[]'.
     """
     cost = Div(text=cost_txt, width=int(plot.plot_width/3), align='center')
     clicked = Div(text=click_txt, width=int(plot.plot_width/3), align='center')
     error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
-    return cost, clicked, error_msg
+    return (cost, clicked, error_msg)
 
 
-def _get_blank_src_data(G):
-    """Return blank source data for plotting the given graph."""
+def _get_blank_src_data(G:nx.Graph) -> Dict[str, List[int]]:
+    """Return default source data for plotting the given graph.
+
+    Args:
+        G (nx.Graph): Graph that is being plotted.
+
+    Returns:
+        Dict[str, List[int]]: Default source data.
+    """
     return {'visited': [],
             'unvisited': list(range(len(G))),
             'tree_edges': [],
@@ -217,8 +283,17 @@ def _get_blank_src_data(G):
             'clicked': []}
 
 
-def _get_edge_src_maps(G, edges_src):
-    """TODO: Need good doc here."""
+def _edge_src_maps(G:nx.Graph,
+                   edges_src:ColumnDataSource) -> Tuple[List[List[float]]]:
+    """Return JS friendly maps from edges to edge_ids and weights.
+
+    Args:
+        G (nx.Graph): Graph containing these edges.
+        edges_src (ColumnDataSource): Data source for edges.
+
+    Returns:
+        Tuple[List[List[float]]]: edge_ids map and weights map.
+    """
     edge_ids = np.zeros((len(G), len(G)))
     G_matrix = np.zeros((len(G), len(G)))
     edge_pairs = list(zip(edges_src.data['u'], edges_src.data['v']))
@@ -231,32 +306,45 @@ def _get_edge_src_maps(G, edges_src):
     return edge_ids.tolist(), G_matrix.tolist()
 
 
-def _add_tools(plot, on_click, nodes_glyph, renderers, source, edges_src=None,
-               nodes_src=None, tour_src=None, cost_matrix=None, cost=None,
-               error_msg=None, clicked=None, table_src=None):
-    """Add hover and tap tools to the plot."""
+def _add_tools(plot:Figure,
+               on_click:str,
+               nodes_glyph:GlyphRenderer,
+               renderer:GlyphRenderer, **kw):
+    """Add hover and tap tools to the plot.
+
+    Args:
+        plot (Figure): Plot to add these tools to.
+        on_click (str): JS code to be run when the renderer is clicked.
+        nodes_glyph (GlyphRenderer): Glyph for the nodes on this plot.
+        renderer (GlyphRenderer): Renderer that should call on_click code.
+    """
     on_hover_code = "source.data['last_index'] = cb_data.index.indices[0]"
     plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
                              renderers=[nodes_glyph]),
                    HoverTool(tooltips=None,
-                             callback=CustomJS(args=dict(source=source),
+                             callback=CustomJS(args=dict(source=kw['source']),
                                                code=on_hover_code),
-                             renderers=[renderers]),
-                   TapTool(callback=CustomJS(args=dict(source=source,
-                                                       edges_src=edges_src,
-                                                       nodes_src=nodes_src,
-                                                       tour_src=tour_src,
-                                                       cost_matrix=cost_matrix,
-                                                       cost=cost,
-                                                       error_msg=error_msg,
-                                                       clicked=clicked,
-                                                       table_src=table_src),
+                             renderers=[renderer]),
+                   TapTool(callback=CustomJS(args=kw,
                                              code=on_click),
-                           renderers=[renderers]))
+                           renderers=[renderer]))
 
 
-def _get_grid(plot, cost, error_msg, clicked):
-    """Return gridplot with plot and divs"""
+def _get_grid(plot:Figure,
+              cost:Div,
+              error_msg:Div,
+              clicked:Div) -> GridBox:
+    """Return a grid containing the given plot and divs
+
+    Args:
+        plot (Figure): The plot to be in the grid.
+        cost_text (Div): Current cost of solution.
+        error_msg (Div): Error message.
+        clicked_text (Div): Clicked objects.
+
+    Returns:
+        GridBox: grid containing the given plot and divs.
+    """
     return gridplot([[plot],
                      [row(cost,error_msg,clicked)]],
                     plot_width=plot.plot_width,
@@ -265,13 +353,19 @@ def _get_grid(plot, cost, error_msg, clicked):
                     toolbar_options={'logo': None})
 
 
-def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
-               **kw):
-    """Plot the graph G.
+def plot_graph(G:nx.Graph,
+               edges:List[Tuple[int]],
+               cost:float = None,
+               show_all_edges:bool = True,
+               show_labels:bool = True, **kw):
+    """Plot the graph G highlighting the given edges.
 
     Args:
-        G (nx.Graph): Networkx graph.
-        edges (List): Edges to highlight.
+        G (nx.Graph): Graph to be plotted.
+        edges (List[Tuple[int]]): Edges to be highlighted.
+        cost (float, optional): Cost to be displayed. Defaults to None.
+        show_all_edges (bool, optional): True iff all edges should be shown.
+        show_labels (bool, optional): True iff labels should be shown.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -284,7 +378,8 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
         edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
 
     if len(edges) > 0:
-        xs, ys = _edge_positions(G, edges, ret='list')
+        xs, ys = _edge_positions(G, edges)
+        xs, ys = list(xs.values()), list(ys.values())
         plot.multi_line(xs=xs, ys=ys, line_cap='round', line_width=LINE_WIDTH,
                         line_color=TERTIARY_DARK_COLOR, level='image')
 
@@ -302,12 +397,12 @@ def plot_graph(G, show_all_edges=True, show_labels=True, edges=[], cost=None,
     show(grid)
 
 
-def plot_tour(G, tour, **kw):
+def plot_tour(G:nx.Graph, tour:List[int], **kw):
     """Plot the tour on graph G.
 
     Args:
         G (nx.Graph): Networkx graph.
-        tour (List): Tour of the graph
+        tour (List[int]): Tour of the graph.
     """
     cost = tour_cost(G, tour)
     edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
@@ -315,16 +410,21 @@ def plot_tour(G, tour, **kw):
                cost=cost, **kw)
 
 
-def plot_tree(G, tree, show_cost=False, **kw):
+def plot_tree(G:nx.Graph,
+              tree:List[Tuple[int]],
+              show_cost:bool = False, **kw):
     """Plot the tree on graph G.
 
     Args:
         G (nx.Graph): Networkx graph.
-        tree (List): List of edges in the tree.
+        tree (List[int]): List of edges in the tree.
     """
     cost = spanning_tree_cost(G, tree)
     plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
                cost=cost, **kw)
+
+
+# TODO: Finish editting docstrings from HERE on.
 
 
 def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
@@ -352,7 +452,8 @@ def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
         edge_xs = []
         edge_ys = []
         for i in range(len(edges)):
-            xs, ys = _edge_positions(G, edges[i], ret='list')
+            xs, ys = _edge_positions(G, edges[i])
+            xs, ys = list(xs.values()), list(ys.values())
             edge_xs.append(xs)
             edge_ys.append(ys)
         source_data['edge_xs'] = edge_xs
@@ -650,7 +751,7 @@ def plot_create_tour(G, **kw):
     on_click = code + 'check_done()\ncreate_tour_on_click()\n'
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
-               renderers=nodes_glyph, source=source, nodes_src=nodes_src,
+               renderer=nodes_glyph, source=source, nodes_src=nodes_src,
                tour_src=tour_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
@@ -673,7 +774,7 @@ def plot_create_spanning_tree(G, **kw):
     edges_src, edges_glyph = _add_edges(G, plot, show_labels=True)
 
     src_data = _get_blank_src_data(G)
-    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    edge_ids, G_matrix = _edge_src_maps(G, edges_src)
     src_data['edge_ids'] = edge_ids
     cost_matrix = ColumnDataSource(data={'G': G_matrix})
 
@@ -688,7 +789,7 @@ def plot_create_spanning_tree(G, **kw):
     on_click = code + "check_done()\nload_data()\nselect_edge()\ntree_update()"
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
-               renderers=edges_glyph, source=source, nodes_src=nodes_src,
+               renderer=edges_glyph, source=source, nodes_src=nodes_src,
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
@@ -744,7 +845,7 @@ def plot_assisted_mst_algorithm(G, algorithm, source=None, **kw):
         edges_src.data['line_color'] = [TERTIARY_DARK_COLOR]*len(G.edges())
         nodes_src.data['fill_color'] = [PRIMARY_DARK_COLOR]*len(G)
 
-    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    edge_ids, G_matrix = _edge_src_maps(G, edges_src)
     src_data['edge_ids'] = edge_ids
     cost_matrix = ColumnDataSource(data={'G': G_matrix})
 
@@ -766,7 +867,7 @@ def plot_assisted_mst_algorithm(G, algorithm, source=None, **kw):
     on_click = JS_CODE + code
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
-               renderers=edges_glyph, source=source, nodes_src=nodes_src,
+               renderer=edges_glyph, source=source, nodes_src=nodes_src,
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
@@ -799,7 +900,7 @@ def plot_assisted_dijkstras(G, s=0, **kw):
     src_data['settled'] = []
     src_data['frontier'] = [s]
 
-    edge_ids, G_matrix = _get_edge_src_maps(G, edges_src)
+    edge_ids, G_matrix = _edge_src_maps(G, edges_src)
     src_data['edge_ids'] = edge_ids
     cost_matrix = ColumnDataSource(data={'G': G_matrix})
 
@@ -828,7 +929,7 @@ def plot_assisted_dijkstras(G, s=0, **kw):
     on_click = JS_CODE + code
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
-               renderers=nodes_glyph, source=source, nodes_src=nodes_src,
+               renderer=nodes_glyph, source=source, nodes_src=nodes_src,
                edges_src=edges_src, cost_matrix=cost_matrix,
                error_msg=error_msg, table_src=table_src)
 
