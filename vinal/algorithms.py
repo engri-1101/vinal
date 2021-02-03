@@ -331,6 +331,7 @@ def two_opt(G, tour, iterations=False):
         tours.append(tour.copy())
         swaps.append(swapped.copy())
         improved, swapped = two_opt_iteration(tour,G)
+    swaps.append(None)
     return (tours, swaps) if iterations else tour
 
 

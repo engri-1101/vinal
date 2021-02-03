@@ -4,8 +4,7 @@ This module contains various functions to plot graphs and algorithms.
 """
 
 __author__ = 'Henry Robbins'
-__all__ = ['plot_graph', 'plot_graph_iterations', 'plot_tour',
-           'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
+__all__ = ['plot_tour', 'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
            'plot_tsp_heuristic', 'plot_etching_tour', 'plot_create_tour',
            'plot_create_spanning_tree', 'plot_assisted_mst_algorithm',
            'plot_assisted_dijkstras']
@@ -54,6 +53,11 @@ LINE_WIDTH = 5
 JS_CODE = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
 
 
+# ------------------------
+# Plotting Helper Fuctions
+# ------------------------
+
+
 def _graph_range(x:List[float], y:List[float]) -> List[float]:
     """Return x and y ranges that comfortably contain the given points.
 
@@ -76,7 +80,7 @@ def _graph_range(x:List[float], y:List[float]) -> List[float]:
 def _blank_plot(G:nx.Graph,
                 width:int = None,
                 height:int = None,
-                image:str = None) -> Figure:
+                image:str = None, **kw) -> Figure:
     """Return a blank bokeh plot.
 
     If an image is provided, the dimensions of the image form the x and y range
@@ -142,19 +146,24 @@ def _add_image(plot:Figure, image:str):
 
 
 def _edge_positions(G:nx.Graph,
-                    edges:List[Tuple[float]]) -> Dict[Tuple[int], float]:
+                    edges:List[Tuple[float]],
+                    return_type:str = 'List') -> Dict[Tuple[int], float]:
     """Return positional data for the edges of the graph.
 
     Args:
         G (nx.Graph): Graph (nodes must have pos attributes 'x' and 'y').
         edges (List[Tuple[float]]): Edges to compute positional data for.
+        return_type (str): Return type. {'List', 'Dict'}.
 
     Returns:
         Dict[Tuple[int], float]: Dictionary from edges to positions
     """
     xs = {(u,v): (G.nodes[u]['x'], G.nodes[v]['x']) for u,v in edges}
     ys = {(u,v): (G.nodes[u]['y'], G.nodes[v]['y']) for u,v in edges}
-    return xs, ys
+    if return_type == 'Dict':
+        return xs, ys
+    else:
+        return list(xs.values()), list(ys.values())
 
 
 def _set_edge_positions(G:nx.Graph):
@@ -163,9 +172,36 @@ def _set_edge_positions(G:nx.Graph):
     Args:
         G (nx.Graph): Graph to add positional attributes to.
     """
-    xs, ys = _edge_positions(G, G.edges)
+    xs, ys = _edge_positions(G, G.edges, return_type='Dict')
     nx.set_edge_attributes(G, xs, 'xs')
     nx.set_edge_attributes(G, ys, 'ys')
+
+
+def _swap_positions(G:nx.Graph, swap:List[int]) -> List[List[float]]:
+    """Return positional data for all edges in an edge swap.
+
+    Args:
+        G (nx.Graph): Networkx Graph.
+        swap (List[int]): (u_1, u_2, v_1, v_2) where (u_1, u_2) and (v_1, v_2)
+                          are swapped with (u_1, v_1) and (u_2, v_2).
+    Returns:
+        List[List[float]]: Positional data for all edges in an edge swap.
+    """
+    def get_coord(i):
+        return G.nodes()[swap[i]]['x'], G.nodes()[swap[i]]['y']
+
+    if swap is None:
+        before_x, before_y, after_x, after_y = [[[],[]]] * 4
+    else:
+        (u1x, u1y) = get_coord(0)
+        (u2x, u2y) = get_coord(1)
+        (v1x, v1y) = get_coord(2)
+        (v2x, v2y) = get_coord(3)
+        before_x = [[u1x, u2x],[v1x, v2x]]
+        before_y = [[u1y, u2y],[v1y, v2y]]
+        after_x = [[u1x, v1x],[u2x, v2x]]
+        after_y = [[u1y, v1y],[u2y, v2y]]
+    return before_x, before_y, after_x, after_y
 
 
 def _set_graph_colors(G:nx.Graph):
@@ -353,11 +389,16 @@ def _get_grid(plot:Figure,
                     toolbar_options={'logo': None})
 
 
-def plot_graph(G:nx.Graph,
-               edges:List[Tuple[int]],
-               cost:float = None,
-               show_all_edges:bool = True,
-               show_labels:bool = True, **kw):
+# ------------------------
+# Static Plotting Fuctions
+# ------------------------
+
+
+def _plot_graph(G:nx.Graph,
+                edges:List[Tuple[int]],
+                cost:float = None,
+                show_all_edges:bool = True,
+                show_labels:bool = True, **kw):
     """Plot the graph G highlighting the given edges.
 
     Args:
@@ -379,7 +420,6 @@ def plot_graph(G:nx.Graph,
 
     if len(edges) > 0:
         xs, ys = _edge_positions(G, edges)
-        xs, ys = list(xs.values()), list(ys.values())
         plot.multi_line(xs=xs, ys=ys, line_cap='round', line_width=LINE_WIDTH,
                         line_color=TERTIARY_DARK_COLOR, level='image')
 
@@ -406,8 +446,8 @@ def plot_tour(G:nx.Graph, tour:List[int], **kw):
     """
     cost = tour_cost(G, tour)
     edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
-    plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
-               cost=cost, **kw)
+    _plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
+                cost=cost, **kw)
 
 
 def plot_tree(G:nx.Graph,
@@ -420,266 +460,16 @@ def plot_tree(G:nx.Graph,
         tree (List[int]): List of edges in the tree.
     """
     cost = spanning_tree_cost(G, tree)
-    plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
-               cost=cost, **kw)
+    _plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
+                cost=cost, **kw)
 
 
-# TODO: Finish editting docstrings from HERE on.
-
-
-def plot_graph_iterations(G, nodes=None, edges=None, costs=None, tables=None,
-                          swaps=None, show_all_edges=True, show_labels=True,
-                          **kw):
-    """Plot the graph G with iterations of edges, nodes, and tables.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        nodes (List): Nodes to highlight at each iteration.
-        edges (List): Edges to highlight at each iteration.
-        tables (List): Tables at each iteration.
-    """
-    G = G.copy()
-    plot = _blank_plot(G, **kw)
-
-    _set_edge_positions(G)
-    _set_graph_colors(G)
-
-    # build source data dictionary
-    k = 0  # number of iterations
-    source_data = {}
-    if edges is not None:
-        k = len(edges)
-        edge_xs = []
-        edge_ys = []
-        for i in range(len(edges)):
-            xs, ys = _edge_positions(G, edges[i])
-            xs, ys = list(xs.values()), list(ys.values())
-            edge_xs.append(xs)
-            edge_ys.append(ys)
-        source_data['edge_xs'] = edge_xs
-        source_data['edge_ys'] = edge_ys
-    if nodes is not None:
-        k = len(nodes)
-        source_data['nodes'] = nodes
-    if costs is not None:
-        k = len(costs)
-        source_data['costs'] = costs
-    if tables is not None:
-        k = len(tables)
-        tables = [table.to_dict(orient='list') for table in tables]
-        source_data['tables'] = tables
-    if swaps is not None:
-        k = len(swaps) + 1
-        swaps_before_x = []
-        swaps_before_y = []
-        swaps_after_x = []
-        swaps_after_y = []
-        for swap in swaps:
-            def get_coord(i):
-                return G.nodes()[swap[i]]['x'], G.nodes()[swap[i]]['y']
-            (u1x, u1y) = get_coord(0)
-            (u2x, u2y) = get_coord(1)
-            (v1x, v1y) = get_coord(2)
-            (v2x, v2y) = get_coord(3)
-            swaps_before_x.append([[u1x, u2x],[v1x, v2x]])
-            swaps_before_y.append([[u1y, u2y],[v1y, v2y]])
-            swaps_after_x.append([[u1x, v1x],[u2x, v2x]])
-            swaps_after_y.append([[u1y, v1y],[u2y, v2y]])
-        swaps_before_x.append([[],[]])
-        swaps_before_y.append([[],[]])
-        swaps_after_x.append([[],[]])
-        swaps_after_y.append([[],[]])
-        source_data['swaps_before_x'] = swaps_before_x
-        source_data['swaps_before_y'] = swaps_before_y
-        source_data['swaps_after_x'] = swaps_after_x
-        source_data['swaps_after_y'] = swaps_after_y
-
-    # data sources and glyphs
-    args_dict = {}
-    nodes_src, nodes_glyph = _add_nodes(G, plot)
-    args_dict['nodes_src'] = nodes_src
-    if show_all_edges:
-        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
-
-    if nodes is not None:
-        for i in range(len(nodes_src.data['line_color'])):
-            if i in nodes[0]:
-                nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
-                nodes_src.data['fill_color'][i] = PRIMARY_DARK_COLOR
-
-    source = ColumnDataSource(data=source_data)
-    args_dict['source'] = source
-
-    n = Div(text='0', width=plot.plot_width, align='center')
-    k = Div(text=str(k), width=plot.plot_width, align='center')
-    done = Div(text='', width=int(plot.plot_width/2), align='center')
-    args_dict['n'] = n
-    args_dict['k'] = k
-    args_dict['done'] = done
-
-    if edges is not None:
-        edge_subset_src = ColumnDataSource(data={'xs': edge_xs[0],
-                                                 'ys': edge_ys[0]})
-        plot.multi_line('xs', 'ys', line_color=TERTIARY_DARK_COLOR,
-                        line_width=LINE_WIDTH, level='underlay',
-                        line_cap='round', source=edge_subset_src)
-        args_dict['edge_subset_src'] = edge_subset_src
-
-    if costs is not None:
-        cost = Div(text=str(costs[0]),
-                   width=int(plot.plot_width/2),
-                   align='center')
-        args_dict['cost'] = cost
-
-    if tables is not None:
-        table_src = ColumnDataSource(data=tables[0])
-        columns = [TableColumn(field='index', title='')]
-        for i in range(len(tables[0])-1):
-            columns.append(TableColumn(field=str(i), title=str(i)))
-        table = DataTable(source=table_src, columns=columns, height=80,
-                          width_policy='fit', max_width=plot.plot_width,
-                          width=plot.plot_width, background='white',
-                          index_position=None, editable=False,
-                          reorderable=False, sortable=False, selectable=False)
-        args_dict['table_src'] = table_src
-
-    if swaps is not None:
-        swaps_src = ColumnDataSource(data={'swaps_before_x': swaps_before_x[0],
-                                           'swaps_before_y': swaps_before_y[0],
-                                           'swaps_after_x': swaps_after_x[0],
-                                           'swaps_after_y': swaps_after_y[0]})
-        plot.multi_line(xs='swaps_before_x', ys='swaps_before_y',
-                        line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
-                        line_cap='round', level='underlay', source=swaps_src)
-        plot.multi_line(xs='swaps_after_x', ys='swaps_after_y',
-                        line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
-                        line_cap='round', level='underlay',
-                        line_dash=[10,12], source=swaps_src)
-        args_dict['swaps_src'] = swaps_src
-
-    # Javascript
-    btn_code = JS_CODE
-    next_btn_code = btn_code + 'increment_iteration()\ndone_update()\n'
-    prev_btn_code = btn_code + 'decrement_iteration()\ndone_update()\n'
-    if costs is not None:
-        next_btn_code += 'cost_update()\n'
-        prev_btn_code += 'cost_update()\n'
-    if edges is not None:
-        next_btn_code += 'edge_subset_update()\n'
-        prev_btn_code += 'edge_subset_update()\n'
-    if tables is not None:
-        next_btn_code += 'table_update()\n'
-        prev_btn_code += 'table_update()\n'
-    if nodes is not None:
-        next_btn_code += 'nodes_update()\n'
-        prev_btn_code += 'nodes_update()\n'
-    if swaps is not None:
-        next_btn_code += 'swaps_update()\n'
-        prev_btn_code += 'swaps_update()\n'
-
-    # buttons
-    next_button = Button(label="Next", button_type="primary",
-                         max_width=int(plot.plot_width/2),
-                         width_policy='fit', sizing_mode='stretch_width')
-    next_button.js_on_click(CustomJS(args=args_dict, code=next_btn_code))
-    prev_button = Button(label="Previous", button_type="primary",
-                         max_width=int(plot.plot_width/2),
-                         width_policy='fit', sizing_mode='stretch_width')
-    prev_button.js_on_click(CustomJS(args=args_dict, code=prev_btn_code))
-
-    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
-                             renderers=[nodes_glyph]))
-
-    # create layout
-    layout = [[plot],
-              [row(prev_button, next_button,
-                   max_width=plot.plot_width, sizing_mode='stretch_both')],
-              [row(cost, done) if costs else row(done)]]
-    if tables is not None:
-        layout.insert(1, [table])
-
-    grid = gridplot(layout,
-                    plot_width=plot.plot_width,
-                    plot_height=plot.plot_height,
-                    toolbar_location=None,
-                    toolbar_options={'logo': None})
-
-    show(grid)
-
-
-def plot_dijkstras(G, source=0, **kw):
-    """Plot Dijkstra's algorithm running on G.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        s (int): Source vertex to run the algorithm from.
-    """
-    nodes, edges, tables = dijkstras(G, s=source, iterations=True)
-    plot_graph_iterations(G, nodes=nodes, edges=edges, tables=tables, **kw)
-
-
-def plot_mst_algorithm(G, alg, i=0, **kw):
-    """Plot the MST algorithm running on G.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        alg (str): {'prims', 'kruskals', 'reverse_kruskals'}
-        source (int): Source vertex to run the algorithm from.
-    """
-    if alg == 'prims':
-        edges = prims(G, i=i, iterations=True)
-    elif alg == 'kruskals':
-        edges = kruskals(G, iterations=True)
-    elif alg == 'reverse_kruskals':
-        edges = reverse_kruskals(G, iterations=True)
-    nodes = []
-    for edge in edges:
-        nodes.append(list(set([item for sublist in edge for item in sublist])))
-    costs = [spanning_tree_cost(G, tree) for tree in edges]
-    plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs, **kw)
-
-
-def plot_tsp_heuristic(G, alg, initial, **kw):
-    """Plot the TSP heuristic running on G.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        alg (str): {'random_neighbor', 'nearest_neighbor',
-                    'nearest_insertion', 'furthest_insertion', '2-OPT'}
-        initial (int): Starting index or tour (depending on alg)
-    """
-    swaps = None
-    if alg == 'random_neighbor':
-        tours = neighbor(G, initial=initial, nearest=False, iterations=True)
-        if len(tours) > 2:
-            del tours[-2]
-    elif alg == 'nearest_neighbor':
-        tours = neighbor(G, initial=initial, nearest=True, iterations=True)
-        if len(tours) > 2:
-            del tours[-2]
-    elif alg == 'nearest_insertion':
-        tours = insertion(G, initial=initial, nearest=True, iterations=True)
-    elif alg == 'furthest_insertion':
-        tours = insertion(G, initial=initial, nearest=False, iterations=True)
-    elif alg == '2-OPT':
-        tours, swaps = two_opt(G, tour=initial, iterations=True)
-    nodes = tours
-    edges = []
-    for tour in tours:
-        edges.append([(tour[i], tour[i+1]) for i in range(len(tour)-1)])
-    costs = [tour_cost(G, tour) for tour in tours]
-    plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
-                          swaps=swaps, show_all_edges=False, show_labels=False,
-                          **kw)
-    return tours[-1]
-
-
-def plot_etching_tour(G, tour, **kw):
+def plot_etching_tour(G:nx.Graph, tour:List[int], **kw):
     """Plot the tour on the etching problem.
 
     Args:
         G (nx.Graph): Networkx graph.
-        tour (List): Tour of the graph
+        tour (List[int]): Tour of the graph
     """
     # nodes
     x_start = list(nx.get_node_attributes(G,'x_start').values())
@@ -718,7 +508,240 @@ def plot_etching_tour(G, tour, **kw):
     show(grid)
 
 
-def plot_create_tour(G, **kw):
+# ----------------------------
+# Non-Static Plotting Fuctions
+# ----------------------------
+
+
+def _plot_graph_iterations(G:nx.Graph,
+                           nodes:List[List[int]] = None,
+                           edges:List[List[List[int]]] = None,
+                           costs:List[float] = None,
+                           tables:List[pd.DataFrame] = None,
+                           swaps:List[List[int]] = None,
+                           show_all_edges:bool = True,
+                           show_labels:bool = True, **kw):
+    """Plot multiple iterations of a graph that can be toggled through.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        nodes (List[List[int]]): Highlighted nodes at every iteration.
+        edges (List[List[List[int]]]): Highlighted edges at every iteration.
+        costs (List[float]): Cost at every iteration.
+        tables (List[pd.DataFrame]): Table to be shown at every iteration.
+        swaps (List[List[int]]): Edge swap to highlight at every iteration.
+        show_all_edges (bool, optional): True iff all edges should be shown.
+        show_labels (bool, optional): True iff labels should be shown.
+    """
+    G = G.copy()
+    plot = _blank_plot(G, **kw)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    args_dict = {}  # keep track of objects to pass to JS callback
+
+    # nodes and edges
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    args_dict['nodes_src'] = nodes_src
+    if nodes is not None:
+        for i in nodes[0]:
+            nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
+            nodes_src.data['fill_color'][i] = PRIMARY_DARK_COLOR
+
+    if show_all_edges:
+        edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
+
+    # current iteration
+    n = Div(text='0', width=plot.plot_width, align='center')
+    args_dict['n'] = n
+
+    # total number of iterations
+    features = [edges, nodes, costs, tables, swaps]
+    k = max([0 if feature is None else len(feature) for feature in features])
+    k = Div(text=str(k), width=plot.plot_width, align='center')
+    args_dict['k'] = k
+
+    # indicate if on final iteration
+    done = Div(text='', width=int(plot.plot_width/2), align='center')
+    args_dict['done'] = done
+
+    source_data = {}
+
+    if edges is not None:
+        tmp = list(zip(*[_edge_positions(G, edge) for edge in edges]))
+        edge_xs, edge_ys = tmp
+        source_data['edge_xs'] = edge_xs
+        source_data['edge_ys'] = edge_ys
+        edge_subset_src = ColumnDataSource(data={'xs': edge_xs[0],
+                                                 'ys': edge_ys[0]})
+        plot.multi_line('xs', 'ys', line_color=TERTIARY_DARK_COLOR,
+                        line_width=LINE_WIDTH, level='underlay',
+                        line_cap='round', source=edge_subset_src)
+        args_dict['edge_subset_src'] = edge_subset_src
+
+    if nodes is not None:
+        source_data['nodes'] = nodes
+
+    if costs is not None:
+        source_data['costs'] = costs
+        cost = Div(text=str(costs[0]),
+                   width=int(plot.plot_width/2),
+                   align='center')
+        args_dict['cost'] = cost
+
+    if tables is not None:
+        tables = [table.to_dict(orient='list') for table in tables]
+        source_data['tables'] = tables
+        table_src = ColumnDataSource(data=tables[0])
+        columns = [TableColumn(field='index', title='')]
+        for i in range(len(tables[0])-1):
+            columns.append(TableColumn(field=str(i), title=str(i)))
+        table = DataTable(source=table_src, columns=columns, height=80,
+                          width_policy='fit', max_width=plot.plot_width,
+                          width=plot.plot_width, background='white',
+                          index_position=None, editable=False,
+                          reorderable=False, sortable=False, selectable=False)
+        args_dict['table_src'] = table_src
+
+    if swaps is not None:
+        tmp = list(zip(*[_swap_positions(G, swap) for swap in swaps]))
+        swaps_before_x, swaps_before_y, swaps_after_x, swaps_after_y = tmp
+        source_data['swaps_before_x'] = swaps_before_x
+        source_data['swaps_before_y'] = swaps_before_y
+        source_data['swaps_after_x'] = swaps_after_x
+        source_data['swaps_after_y'] = swaps_after_y
+        swaps_src = ColumnDataSource(data={'swaps_before_x': swaps_before_x[0],
+                                           'swaps_before_y': swaps_before_y[0],
+                                           'swaps_after_x': swaps_after_x[0],
+                                           'swaps_after_y': swaps_after_y[0]})
+        plot.multi_line(xs='swaps_before_x', ys='swaps_before_y',
+                        line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
+                        line_cap='round', level='underlay', source=swaps_src)
+        plot.multi_line(xs='swaps_after_x', ys='swaps_after_y',
+                        line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
+                        line_cap='round', level='underlay',
+                        line_dash=[10,12], source=swaps_src)
+        args_dict['swaps_src'] = swaps_src
+
+    source = ColumnDataSource(data=source_data)
+    args_dict['source'] = source
+
+    code = ('done_update()\n'
+            + 'cost_update()\n'*(costs is not None)
+            + 'edge_subset_update()\n'*(edges is not None)
+            + 'table_update()\n'*(tables is not None)
+            + 'nodes_update()\n'*(nodes is not None)
+            + 'swaps_update()\n'*(swaps is not None))
+
+    next_btn_code = JS_CODE + 'increment_iteration()\n' + code
+    prev_btn_code = JS_CODE + 'decrement_iteration()\n' + code
+
+    # buttons
+    next_button = Button(label="Next", button_type="primary",
+                         max_width=int(plot.plot_width/2),
+                         width_policy='fit', sizing_mode='stretch_width')
+    next_button.js_on_click(CustomJS(args=args_dict, code=next_btn_code))
+    prev_button = Button(label="Previous", button_type="primary",
+                         max_width=int(plot.plot_width/2),
+                         width_policy='fit', sizing_mode='stretch_width')
+    prev_button.js_on_click(CustomJS(args=args_dict, code=prev_btn_code))
+
+    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
+                             renderers=[nodes_glyph]))
+
+    # create layout
+    layout = [[plot],
+              [row(prev_button, next_button,
+                   max_width=plot.plot_width, sizing_mode='stretch_both')],
+              [row(cost, done) if costs else row(done)]]
+    if tables is not None:
+        layout.insert(1, [table])
+
+    grid = gridplot(layout,
+                    plot_width=plot.plot_width,
+                    plot_height=plot.plot_height,
+                    toolbar_location=None,
+                    toolbar_options={'logo': None})
+
+    show(grid)
+
+
+def plot_dijkstras(G:nx.Graph, s:int = 0, **kw):
+    """Plot Dijkstra's algorithm running on graph G with source s.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        s (int): Source vertex to run the algorithm from. (Defaults to 0)
+    """
+    nodes, edges, tables = dijkstras(G, s=s, iterations=True)
+    _plot_graph_iterations(G, nodes=nodes, edges=edges, tables=tables, **kw)
+
+
+def plot_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
+    """Plot the MST algorithm running on the graph G.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
+    """
+    if algorithm == 'prims':
+        edges = prims(G, i=kw['i'], iterations=True)
+    elif algorithm == 'kruskals':
+        edges = kruskals(G, iterations=True)
+    elif algorithm == 'reverse_kruskals':
+        edges = reverse_kruskals(G, iterations=True)
+    nodes = []
+    for edge in edges:
+        nodes.append(list(set([item for sublist in edge for item in sublist])))
+    costs = [spanning_tree_cost(G, tree) for tree in edges]
+    _plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs, **kw)
+
+
+def plot_tsp_heuristic(G:nx.Graph, algorithm:str, **kw):
+    """Plot the TSP heuristic running on G.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        algorithm (str): {'random_neighbor', 'nearest_neighbor',
+                          'nearest_insertion', 'furthest_insertion', '2-OPT'}
+    """
+    swaps = None
+    if algorithm == 'random_neighbor':
+        tours = neighbor(G, initial=kw['initial'],
+                         nearest=False, iterations=True)
+        if len(tours) > 2:
+            del tours[-2]
+    elif algorithm == 'nearest_neighbor':
+        tours = neighbor(G, initial=kw['initial'],
+                         nearest=True, iterations=True)
+        if len(tours) > 2:
+            del tours[-2]
+    elif algorithm == 'nearest_insertion':
+        tours = insertion(G, initial=kw['initial'],
+                          nearest=True, iterations=True)
+    elif algorithm == 'furthest_insertion':
+        tours = insertion(G, initial=kw['initial'],
+                          nearest=False, iterations=True)
+    elif algorithm == '2-OPT':
+        tours, swaps = two_opt(G, tour=kw['tour'], iterations=True)
+    nodes = tours
+    edges = []
+    for tour in tours:
+        edges.append([(tour[i], tour[i+1]) for i in range(len(tour)-1)])
+    costs = [tour_cost(G, tour) for tour in tours]
+    _plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
+                           swaps=swaps, show_all_edges=False,
+                           show_labels=False, **kw)
+    return tours[-1]
+
+
+# -----------------------------
+# Interactive Plotting Fuctions
+# -----------------------------
+
+
+def plot_create_tour(G:nx.Graph, **kw):
     """Plot in which you can create a tour.
 
     Args:
@@ -758,7 +781,7 @@ def plot_create_tour(G, **kw):
     show(_get_grid(plot, cost, error_msg, clicked))
 
 
-def plot_create_spanning_tree(G, **kw):
+def plot_create_spanning_tree(G:nx.Graph, **kw):
     """Plot in which you can create a spanning tree.
 
     Args:
@@ -796,90 +819,12 @@ def plot_create_spanning_tree(G, **kw):
     show(_get_grid(plot, cost, error_msg, clicked))
 
 
-def plot_assisted_mst_algorithm(G, algorithm, source=None, **kw):
-    """Plot in which the user creates an MST using the given algorithm.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
-        source (int): Source vertex to run the algorithm from.
-    """
-    G = G.copy()
-    plot = _blank_plot(G, **kw)
-
-    _set_edge_positions(G)
-    _set_graph_colors(G)
-
-    nodes_src, nodes_glyph = _add_nodes(G, plot)
-    if source is not None:
-        nodes_src.data['fill_color'][source] = PRIMARY_DARK_COLOR
-        nodes_src.data['line_color'][source] = PRIMARY_DARK_COLOR
-    if algorithm == 'reverse_kruskals':
-        hover_color = TERTIARY_COLOR
-    else:
-        hover_color = TERTIARY_DARK_COLOR
-    edges_src, edges_glyph = _add_edges(G, plot, show_labels=True,
-                                        hover_line_color=hover_color)
-
-    src_data = _get_blank_src_data(G)
-    if algorithm == 'prims':
-        unvisited = list(range(len(G)))
-        unvisited.remove(source)
-        src_data['visited'] = [source]
-        src_data['unvisited'] = unvisited
-    elif algorithm == 'kruskals':
-        edges = nx.get_edge_attributes(G,'weight')
-        edges = list(dict(sorted(edges.items(), key=lambda item: item[1])))
-        src_data['sorted_edges'] = edges
-        src_data['forest'] = list(range(len(G)))
-        src_data['index'] = [0]
-    elif algorithm == 'reverse_kruskals':
-        src_data['visited'] = list(range(len(G)))
-        src_data['unvisited'] = []
-        src_data['tree_edges'] = list(range(len(G.edges)))
-        edges = nx.get_edge_attributes(G,'weight')
-        edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
-        edges = list(dict(edges))
-        src_data['sorted_edges'] = edges
-        src_data['index'] = [0]
-        edges_src.data['line_color'] = [TERTIARY_DARK_COLOR]*len(G.edges())
-        nodes_src.data['fill_color'] = [PRIMARY_DARK_COLOR]*len(G)
-
-    edge_ids, G_matrix = _edge_src_maps(G, edges_src)
-    src_data['edge_ids'] = edge_ids
-    cost_matrix = ColumnDataSource(data={'G': G_matrix})
-
-    # docs indicate that each value should be of the same length but this works
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        source = ColumnDataSource(data=src_data)
-
-    if algorithm == 'reverse_kruskals':
-        cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
-        clicked_edges = [str(x).replace(' ', '') for x in list(G.edges)]
-        click_txt = '[' + ','.join(clicked_edges) + ']'
-        cost, clicked, error_msg = _get_create_divs(plot, cost_txt=cost_text,
-                                                    click_txt=click_txt)
-    else:
-        cost, clicked, error_msg = _get_create_divs(plot)
-
-    code = 'check_done()\nload_data()\n%s()\ntree_update()\n' % (algorithm)
-    on_click = JS_CODE + code
-
-    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
-               renderer=edges_glyph, source=source, nodes_src=nodes_src,
-               edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
-               error_msg=error_msg, clicked=clicked)
-
-    show(_get_grid(plot, cost, error_msg, clicked))
-
-
 def plot_assisted_dijkstras(G, s=0, **kw):
     """Plot in which the user creates a shortest path tree from s.
 
     Args:
         G (nx.Graph): Networkx graph.
-        s (int): s vertex to run the dijkstras from.
+        s (int): The vertex to generate a shortest path tree from.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -942,3 +887,80 @@ def plot_assisted_dijkstras(G, s=0, **kw):
                     toolbar_options={'logo': None})
 
     show(grid)
+
+
+def plot_assisted_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
+    """Plot in which the user creates an MST using the given algorithm.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
+    """
+    G = G.copy()
+    plot = _blank_plot(G, **kw)
+
+    _set_edge_positions(G)
+    _set_graph_colors(G)
+
+    nodes_src, nodes_glyph = _add_nodes(G, plot)
+    if 's' in kw:
+        nodes_src.data['fill_color'][kw['s']] = PRIMARY_DARK_COLOR
+        nodes_src.data['line_color'][kw['s']] = PRIMARY_DARK_COLOR
+    if algorithm == 'reverse_kruskals':
+        hover_color = TERTIARY_COLOR
+    else:
+        hover_color = TERTIARY_DARK_COLOR
+    edges_src, edges_glyph = _add_edges(G, plot, show_labels=True,
+                                        hover_line_color=hover_color)
+
+    src_data = _get_blank_src_data(G)
+    if algorithm == 'prims':
+        unvisited = list(range(len(G)))
+        unvisited.remove(kw['s'])
+        src_data['visited'] = [kw['s']]
+        src_data['unvisited'] = unvisited
+    elif algorithm == 'kruskals':
+        edges = nx.get_edge_attributes(G,'weight')
+        edges = list(dict(sorted(edges.items(), key=lambda item: item[1])))
+        src_data['sorted_edges'] = edges
+        src_data['forest'] = list(range(len(G)))
+        src_data['index'] = [0]
+    elif algorithm == 'reverse_kruskals':
+        src_data['visited'] = list(range(len(G)))
+        src_data['unvisited'] = []
+        src_data['tree_edges'] = list(range(len(G.edges)))
+        edges = nx.get_edge_attributes(G,'weight')
+        edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
+        edges = list(dict(edges))
+        src_data['sorted_edges'] = edges
+        src_data['index'] = [0]
+        edges_src.data['line_color'] = [TERTIARY_DARK_COLOR]*len(G.edges())
+        nodes_src.data['fill_color'] = [PRIMARY_DARK_COLOR]*len(G)
+
+    edge_ids, G_matrix = _edge_src_maps(G, edges_src)
+    src_data['edge_ids'] = edge_ids
+    cost_matrix = ColumnDataSource(data={'G': G_matrix})
+
+    # docs indicate that each value should be of the same length but this works
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        source = ColumnDataSource(data=src_data)
+
+    if algorithm == 'reverse_kruskals':
+        cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
+        clicked_edges = [str(x).replace(' ', '') for x in list(G.edges)]
+        click_txt = '[' + ','.join(clicked_edges) + ']'
+        cost, clicked, error_msg = _get_create_divs(plot, cost_txt=cost_text,
+                                                    click_txt=click_txt)
+    else:
+        cost, clicked, error_msg = _get_create_divs(plot)
+
+    code = 'check_done()\nload_data()\n%s()\ntree_update()\n' % (algorithm)
+    on_click = JS_CODE + code
+
+    _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
+               renderer=edges_glyph, source=source, nodes_src=nodes_src,
+               edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
+               error_msg=error_msg, clicked=clicked)
+
+    show(_get_grid(plot, cost, error_msg, clicked))
