@@ -19,7 +19,7 @@ from pkg_resources import resource_stream
 from typing import List, Tuple, Dict, Union
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
-                         tour_cost)
+                         tour_cost, Tree)
 from bokeh.plotting import figure, Figure
 from bokeh.io import show
 from bokeh.models.widgets.markups import Div
@@ -460,7 +460,7 @@ def plot_tree(G:nx.Graph,
         tree (List[int]): List of edges in the tree.
     """
     cost = spanning_tree_cost(G, tree)
-    _plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree,
+    _plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree.edges,
                 cost=cost, **kw)
 
 
@@ -674,7 +674,8 @@ def plot_dijkstras(G:nx.Graph, s:int = 0, **kw):
         G (nx.Graph): Networkx graph.
         s (int): Source vertex to run the algorithm from. (Defaults to 0)
     """
-    nodes, edges, tables = dijkstras(G, s=s, iterations=True)
+    nodes, trees, tables = dijkstras(G, s=s, iterations=True)
+    edges = [tree.edges for tree in trees]
     _plot_graph_iterations(G, nodes=nodes, edges=edges, tables=tables, **kw)
 
 
@@ -686,15 +687,16 @@ def plot_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
         algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
     """
     if algorithm == 'prims':
-        edges = prims(G, i=kw['i'], iterations=True)
+        trees = prims(G, i=kw['i'], iterations=True)
     elif algorithm == 'kruskals':
-        edges = kruskals(G, iterations=True)
+        trees = kruskals(G, iterations=True)
     elif algorithm == 'reverse_kruskals':
-        edges = reverse_kruskals(G, iterations=True)
+        trees = reverse_kruskals(G, iterations=True)
+    edges = [tree.edges for tree in trees]
     nodes = []
     for edge in edges:
         nodes.append(list(set([item for sublist in edge for item in sublist])))
-    costs = [spanning_tree_cost(G, tree) for tree in edges]
+    costs = [spanning_tree_cost(G, tree) for tree in trees]
     _plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs, **kw)
 
 
@@ -708,20 +710,20 @@ def plot_tsp_heuristic(G:nx.Graph, algorithm:str, **kw):
     """
     swaps = None
     if algorithm == 'random_neighbor':
-        tours = neighbor(G, initial=kw['initial'],
+        tours = neighbor(G, i=kw['i'],
                          nearest=False, iterations=True)
         if len(tours) > 2:
             del tours[-2]
     elif algorithm == 'nearest_neighbor':
-        tours = neighbor(G, initial=kw['initial'],
+        tours = neighbor(G, i=kw['i'],
                          nearest=True, iterations=True)
         if len(tours) > 2:
             del tours[-2]
     elif algorithm == 'nearest_insertion':
-        tours = insertion(G, initial=kw['initial'],
+        tours = insertion(G, initial_tour=kw['initial_tour'],
                           nearest=True, iterations=True)
     elif algorithm == 'furthest_insertion':
-        tours = insertion(G, initial=kw['initial'],
+        tours = insertion(G, initial_tour=kw['initial_tour'],
                           nearest=False, iterations=True)
     elif algorithm == '2-OPT':
         tours, swaps = two_opt(G, tour=kw['tour'], iterations=True)
@@ -947,7 +949,7 @@ def plot_assisted_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
         source = ColumnDataSource(data=src_data)
 
     if algorithm == 'reverse_kruskals':
-        cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
+        cost_text = '%.1f' % spanning_tree_cost(G, Tree(edges=G.edges))
         clicked_edges = [str(x).replace(' ', '') for x in list(G.edges)]
         click_txt = '[' + ','.join(clicked_edges) + ']'
         cost, clicked, error_msg = _get_create_divs(plot, cost_txt=cost_text,
