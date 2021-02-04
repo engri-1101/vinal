@@ -4,7 +4,7 @@
 
 |
 
-VIsualize Network ALgorithms (vinal)
+vinal (VIsualize Network ALgorithms)
 ====================================
 
 TODO: Write documentation.
