@@ -1,101 +1,37 @@
-// Used by plot_graph_iterations
-var iteration = 0
-
-// Used by plot_create
+/** @type {float[][]} */
 var G
+/** @type {integer[]} */
 var visited
+/** @type {integer[]} */
 var unvisited
+/** @type {integer[][]} */
 var tree_edges
+/** @type {integer[][]} */
 var edge_ids
+/** @type {(integer[]|integer[][])} */
 var clicked_list
+/** @type {integer} */
 var i
+/** @type {integer} */
 var u
+/** @type {integer} */
 var v
+/** @type {float} */
 var w
 
-// Color Theme -- Using Google's Material Design Color System
-// https://material.io/design/color/the-color-system.html
 
-var PRIMARY_COLOR = '#1565c0'
-var PRIMARY_LIGHT_COLOR = '#5e92f3'
-var PRIMARY_DARK_COLOR = '#003c8f'
-var SECONDARY_COLOR = '#d50000'
-var SECONDARY_LIGHT_COLOR = '#ff5131'
-var SECONDARY_DARK_COLOR = '#9b0000'
-var PRIMARY_FONT_COLOR = '#ffffff'
-var SECONDARY_FONT_COLOR = '#ffffff'
-// Grayscale
-var TERTIARY_COLOR = '#DFDFDF'
-var TERTIARY_LIGHT_COLOR = 'white'  // Jupyter Notebook: white, Sphinx: #FCFCFC
-var TERTIARY_DARK_COLOR = '#404040'
-
-
-function increment_iteration() {
-    if ((parseInt(n.text) + 1) < parseInt(k.text)) {
-        n.text = (parseInt(n.text) + 1).toString()
-    }
-    iteration = parseInt(n.text)
-}
-
-function decrement_iteration() {
-    if ((parseInt(n.text) - 1) >= 0) {
-        n.text = (parseInt(n.text) - 1).toString()
-    }
-    iteration = parseInt(n.text)
-}
-
-function done_update() {
-    if (iteration == parseInt(k.text) - 1) {
-        done.text = "done."
-    } else {
-        done.text = ""
-    }
-}
-
-function edge_subset_update() {
-    edge_subset_src.data['xs'] = source.data['edge_xs'][iteration]
-    edge_subset_src.data['ys'] = source.data['edge_ys'][iteration]
-    edge_subset_src.change.emit()
-}
-
-function cost_update() {
-    cost.text = source.data['costs'][iteration].toFixed(1)
-}
-
-function table_update() {
-    table_src.data = source.data['tables'][iteration]
-}
-
-function nodes_update() {
-    var in_tree = source.data['nodes'][iteration]
-
-    for (let i = 0; i < nodes_src.data['line_color'].length ; i++) {
-        if (in_tree.includes(i)) {
-            nodes_src.data['fill_color'][i] = PRIMARY_DARK_COLOR
-            nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
-        } else {
-            nodes_src.data['fill_color'][i] = PRIMARY_LIGHT_COLOR
-            nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
-        }
-    }
-
-    nodes_src.change.emit()
-}
-
-function swaps_update() {
-    swaps_src.data['swaps_before_x'] = source.data['swaps_before_x'][iteration]
-    swaps_src.data['swaps_before_y'] = source.data['swaps_before_y'][iteration]
-    swaps_src.data['swaps_after_x'] = source.data['swaps_after_x'][iteration]
-    swaps_src.data['swaps_after_y'] = source.data['swaps_after_y'][iteration]
-    swaps_src.change.emit()
-}
-
+/**
+ * Check if the error message text indicates tour or tree is complete.
+ */
 function check_done() {
     if (error_msg.text == 'done.') {
         return;
     }
 }
 
+/**
+ * Load the data necessary data for MST and shortest path tree creation.
+ */
 function load_data() {
     G = cost_matrix.data['G']
     visited = source.data['visited']
@@ -110,6 +46,9 @@ function load_data() {
     w = edges_src.data['weight'][i]
 }
 
+/**
+ * Update node and edge highlighting upon a proper edge selection.
+ */
 function select_edge() {
     if (!visited.includes(v)) {
         nodes_src.data['fill_color'][v] = PRIMARY_DARK_COLOR
@@ -131,6 +70,11 @@ function select_edge() {
     error_msg.text = ''
 }
 
+/**
+ * Iteration of Prim's algorithm.
+ * Check if user-selected edge is a valid next edge. If valid, add the selected
+ * edge. If not, an error message is returned.
+ */
 function prims() {
     var possible = {}
     for (let i = 0; i < visited.length; i++) {
@@ -167,6 +111,11 @@ function prims() {
     }
 }
 
+/**
+ * Iteration of Kruskal's algorithm.
+ * Check if user-selected edge is a valid next edge. If valid, add the selected
+ * edge. If not, an error message is returned.
+ */
 function kruskals() {
     var sorted_edges = source.data['sorted_edges']
     var forest = source.data['forest']
@@ -201,34 +150,49 @@ function kruskals() {
     source.data['index'][0] = index
 }
 
+/**
+ * Return an array of length len where every element has the given value.
+ * @param {float} value
+ * @param {integer} len
+ * @returns {float[]}
+ */
+function fillArray(value, len) {
+    var a = [value];
+    while (a.length * 2 <= len) a = a.concat(a);
+    if (a.length < len) a = a.concat(a.slice(0, len - a.length));
+    return a;
+}
+
+/**
+ * Return true iff the undirected graph G is connected.
+ * @param {float[][]} G
+ * @returns {boolean}
+ */
+function is_connected(G) {
+    var check = fillArray(false, G.length)
+    check[0] = true
+    var checked = [0]
+
+    while (checked.length > 0) {
+        var a = checked.shift()
+        for (let b = 0; b < G[a].length; b++) {
+            if (G[a][b] > 0 && !check[b]) {
+                check[b] = true
+                checked.push(b)
+            }
+        }
+    }
+    return check.every(function(x) {return x})
+}
+
+/**
+ * Iteration of reverse Kruskal's algorithm.
+ * Check if user-selected edge is a valid next edge. If valid, add the selected
+ * edge. If not, an error message is returned.
+ */
 function reverse_kruskals() {
     var sorted_edges = source.data['sorted_edges']
     var index = source.data['index'][0]
-
-    function is_connected(G) {
-        function fillArray(value, len) {
-            var a = [value];
-            while (a.length * 2 <= len) a = a.concat(a);
-            if (a.length < len) a = a.concat(a.slice(0, len - a.length));
-            return a;
-        }
-
-        var check = fillArray(false, G.length)
-        check[0] = true
-        var checked = [0]
-
-        while (checked.length > 0) {
-            var a = checked.shift()
-            for (let b = 0; b < G[a].length; b++) {
-                if (G[a][b] > 0 && !check[b]) {
-                    check[b] = true
-                    checked.push(b)
-                }
-            }
-        }
-
-        return check.every(function(x) {return x})
-    }
 
     var a = sorted_edges[index][0]
     var b = sorted_edges[index][1]
@@ -295,6 +259,9 @@ function reverse_kruskals() {
     source.data['index'][0] = index
 }
 
+/**
+ * Final updates when creating an MST or shortest path tree.
+ */
 function tree_update() {
     if (tree_edges.length == nodes_src.data['x'].length - 1) {
         error_msg.text = 'done.'
@@ -315,6 +282,9 @@ function tree_update() {
     edges_src.change.emit()
 }
 
+/**
+ * Check if user-selected node is valid and add to tour if valid.
+ */
 function create_tour_on_click () {
     var v = source.data['last_index']
     var n = nodes_src.data['line_color'].length
@@ -359,6 +329,11 @@ function create_tour_on_click () {
     nodes_src.change.emit()
 }
 
+/**
+ * Iteration of Dijkstra's algorithm.
+ * Check if user-selected node is a valid next node. If valid, add the selected
+ * node. If not, an error message is returned.
+ */
 function dijkstras() {
     var dist = source.data['dist']
     var prev = source.data['prev']

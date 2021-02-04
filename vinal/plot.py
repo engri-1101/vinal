@@ -50,7 +50,15 @@ NODE_SIZE = 11
 NODE_LINE_WIDTH = 3
 LINE_WIDTH = 5
 
-JS_CODE = resource_stream('vinal.resources', 'plot.js').read().decode("utf-8")
+CONSTANTS_JS = resource_stream('vinal.resources',
+                               'constants.js').read().decode("utf-8")
+PLOT_CREATE_JS = (CONSTANTS_JS
+                  + resource_stream('vinal.resources',
+                                    'plot_create.js').read().decode("utf-8"))
+PLOT_GRAPH_ITERATIONS_JS = (CONSTANTS_JS
+                            + resource_stream('vinal.resources',
+                                              'plot_graph_iterations.js'
+                                              ).read().decode("utf-8"))
 
 
 # ------------------------
@@ -633,9 +641,8 @@ def _plot_graph_iterations(G:nx.Graph,
             + 'table_update()\n'*(tables is not None)
             + 'nodes_update()\n'*(nodes is not None)
             + 'swaps_update()\n'*(swaps is not None))
-
-    next_btn_code = JS_CODE + 'increment_iteration()\n' + code
-    prev_btn_code = JS_CODE + 'decrement_iteration()\n' + code
+    next_btn_code = PLOT_GRAPH_ITERATIONS_JS + 'increment_iteration()\n' + code
+    prev_btn_code = PLOT_GRAPH_ITERATIONS_JS + 'decrement_iteration()\n' + code
 
     # buttons
     next_button = Button(label="Next", button_type="primary",
@@ -772,8 +779,7 @@ def plot_create_tour(G:nx.Graph, **kw):
 
     cost, clicked, error_msg = _get_create_divs(plot)
 
-    code = JS_CODE
-    on_click = code + 'check_done()\ncreate_tour_on_click()\n'
+    on_click = PLOT_CREATE_JS + 'check_done()\ncreate_tour_on_click()\n'
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
                renderer=nodes_glyph, source=source, nodes_src=nodes_src,
@@ -810,7 +816,7 @@ def plot_create_spanning_tree(G:nx.Graph, **kw):
 
     cost, clicked, error_msg = _get_create_divs(plot)
 
-    code = JS_CODE
+    code = PLOT_CREATE_JS
     on_click = code + "check_done()\nload_data()\nselect_edge()\ntree_update()"
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
@@ -872,8 +878,7 @@ def plot_assisted_dijkstras(G, s=0, **kw):
                       index_position=None, editable=False,
                       reorderable=False, sortable=False, selectable=False)
 
-    code = 'check_done()\nload_data()\ndijkstras()\n'
-    on_click = JS_CODE + code
+    on_click = PLOT_CREATE_JS + 'check_done()\nload_data()\ndijkstras()\n'
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
                renderer=nodes_glyph, source=source, nodes_src=nodes_src,
@@ -958,7 +963,7 @@ def plot_assisted_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
         cost, clicked, error_msg = _get_create_divs(plot)
 
     code = 'check_done()\nload_data()\n%s()\ntree_update()\n' % (algorithm)
-    on_click = JS_CODE + code
+    on_click = PLOT_CREATE_JS + code
 
     _add_tools(plot, on_click=on_click, nodes_glyph=nodes_glyph,
                renderer=edges_glyph, source=source, nodes_src=nodes_src,
