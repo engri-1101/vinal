@@ -10,17 +10,22 @@ __all__ = ['distance_matrix', 'create_network', 'grid_instance']
 import numpy as np
 import pandas as pd
 import networkx as nx
+from typing import Union
 
 
-def distance_matrix(nodes, manhattan=True):
+def distance_matrix(nodes:pd.DataFrame, manhattan:bool = True) -> np.ndarray:
     """Compute the distance matrix between the nodes.
 
-    Nodes dataframe can have both start and ending locations by having
-    columns x_start, y_start and x_end, y_end
+    Nodes dataframe should contain either columns 'x' and 'y' specifying each
+    node location or columns 'x_start', 'y_start', 'x_end', and 'y_end' in the
+    case that a node has a different start and end location.
 
     Args:
         nodes (pd.DataFrame): Dataframe of nodes with at least (x,y) positions.
         manhattan (bool): {True: manhattan distance, False : euclidian}.
+
+    Returns:
+        np.ndarray: Distance matrix between these nodes.
     """
     if 'x_start' not in nodes.columns:
         A = np.array(list(zip(nodes['x'].tolist(), nodes['y'].tolist())))
@@ -40,8 +45,11 @@ def distance_matrix(nodes, manhattan=True):
         return np.sqrt(p1+p2+p3)
 
 
-def create_network(nodes, edges=None, directed=False, manhattan=True):
-    """Return networkx graph representing list of nodes/edges.
+def create_network(nodes:pd.DataFrame,
+                   edges:pd.DataFrame = None,
+                   directed:bool = False,
+                   manhattan:bool = True) -> Union[nx.Graph, nx.DiGraph]:
+    """Return networkx graph derived from the list of nodes/edges.
 
     If no edges are given, defaults to generating all edges with
     weight equivalent to the euclidean distance between the nodes.
@@ -51,6 +59,9 @@ def create_network(nodes, edges=None, directed=False, manhattan=True):
         edges (pd.DataFrame): Dataframe of edges (u,v) with weight w.
         directed (bool): True iff graph is directed (defaults to False).
         manhattan (bool): {True: manhattan distance, False : euclidian}.
+
+    Returns:
+        Union[nx.Graph, nx.DiGraph]: Either an undirected or directed graph.
     """
     graph_type = nx.DiGraph if directed else nx.Graph
     if edges is None:
@@ -69,13 +80,16 @@ def create_network(nodes, edges=None, directed=False, manhattan=True):
     return G
 
 
-def grid_instance(n, m, manhattan=True):
+def grid_instance(n:int, m:int, manhattan:bool = True) -> nx.Graph:
     """Return a graph G representing an n x m set of nodes.
 
     Args:
         n (int): width of the grid.
         m (int): height of the grid.
         manhattan (bool): {True: manhattan distance, False : euclidian}.
+
+    Returns:
+        nx.Graph: Graph of n x m inter-connected nodes.
     """
     nodes = pd.DataFrame()
     for i in range(n):
