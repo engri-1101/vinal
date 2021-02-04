@@ -2,4 +2,5 @@ numpy==1.19.3
 pandas==1.1.4
 networkx==2.5
 bokeh==2.2.3
+ortools==8.0.8283
 typing==3.7.4.3
