@@ -15,7 +15,7 @@ import pandas as pd
 import networkx as nx
 import warnings
 from PIL import Image
-from pkg_resources import resource_stream
+import pkgutil
 from typing import List, Tuple, Dict, Union
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
@@ -56,16 +56,13 @@ NODE_LEVEL = 'glyph'
 EDGE_LEVEL = 'underlay'
 IMAGE_LEVEL = 'image'
 
+CONSTANTS_JS = pkgutil.get_data(__name__, "resources/constants.js").decode()
 
-CONSTANTS_JS = resource_stream('vinal.resources',
-                               'constants.js').read().decode("utf-8")
-PLOT_CREATE_JS = (CONSTANTS_JS
-                  + resource_stream('vinal.resources',
-                                    'plot_create.js').read().decode("utf-8"))
-PLOT_GRAPH_ITERATIONS_JS = (CONSTANTS_JS
-                            + resource_stream('vinal.resources',
-                                              'plot_graph_iterations.js'
-                                              ).read().decode("utf-8"))
+tmp = pkgutil.get_data(__name__, "resources/plot_create.js")
+PLOT_CREATE_JS = CONSTANTS_JS + tmp.decode()
+
+tmp = pkgutil.get_data(__name__, "resources/plot_graph_iterations.js")
+PLOT_GRAPH_ITERATIONS_JS = CONSTANTS_JS + tmp.decode()
 
 
 # ------------------------
