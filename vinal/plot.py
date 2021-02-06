@@ -49,6 +49,7 @@ TERTIARY_DARK_COLOR = '#404040'
 NODE_SIZE = 11
 NODE_LINE_WIDTH = 3
 LINE_WIDTH = 5
+PLOT_MARGIN = 0.085
 
 CONSTANTS_JS = resource_stream('vinal.resources',
                                'constants.js').read().decode("utf-8")
@@ -77,10 +78,10 @@ def _graph_range(x:List[float], y:List[float]) -> List[float]:
         List[float]: x-range (min_x, max_x) and y-range (min_y, max_y).
     """
     min_x, max_x = min(x), max(x)
-    x_margin = 0.085*(max_x - min_x)
+    x_margin = PLOT_MARGIN * (max_x - min_x)
     min_x, max_x = min_x - x_margin, max_x + x_margin
     min_y, max_y = min(y), max(y)
-    y_margin = 0.085*(max_y - min_y)
+    y_margin = PLOT_MARGIN * (max_y - min_y)
     min_y, max_y = min_y - y_margin, max_y + y_margin
     return (min_x, max_x, min_y, max_y)
 
@@ -281,18 +282,59 @@ def _add_edges(G:nx.Graph,
                                   source=edges_src)
 
     if show_labels:
-        lbl_x = [np.mean(i) for i in nx.get_edge_attributes(G, 'xs').values()]
-        lbl_y = [np.mean(i) for i in nx.get_edge_attributes(G, 'ys').values()]
-        lbl_txt = list(nx.get_edge_attributes(G,'weight').values())
-        labels_src = ColumnDataSource(data={'x': lbl_x,
-                                            'y': lbl_y,
-                                            'text': lbl_txt})
-
-        labels = LabelSet(x='x', y='y', text='text', render_mode='canvas',
-                          source=labels_src)
-        plot.add_layout(labels)
+        _add_labels(G, plot)
 
     return edges_src, edges_glyph
+
+
+def _add_labels(G:nx.Graph, plot:Figure):
+    """Add labels from G to the plot.
+
+    Args:
+        G (nx.Graph): Networkx graph.
+        plot (Figure): Plot to add the labels to.
+    """
+    text = [round(w,2) for w in nx.get_edge_attributes(G,'weight').values()]
+    xs = np.array(list(nx.get_edge_attributes(G, 'xs').values()))
+    ys = np.array(list(nx.get_edge_attributes(G, 'ys').values()))
+
+    x_range = (plot.x_range.end - plot.x_range.start)
+    y_range = (plot.y_range.end - plot.y_range.start)
+    margin_shift_x = (x_range / (2 * PLOT_MARGIN + 1)) * PLOT_MARGIN
+    margin_shift_y = (y_range / (2 * PLOT_MARGIN + 1)) * PLOT_MARGIN
+    x_scale = plot.plot_width / x_range
+    y_scale = plot.plot_height / y_range
+
+    xs = (xs + margin_shift_x - plot.x_range.start) * x_scale
+    ys = (ys + margin_shift_y - plot.y_range.start) * y_scale
+
+    x = np.mean(xs, axis=1)
+    y = np.mean(ys, axis=1)
+    centers = np.vstack((x,y)).T
+    v = np.vstack((xs[:,1] - xs[:,0], ys[:,1] - ys[:,0])).T
+    n = np.divide(v.T, np.linalg.norm(v, axis=1)).T
+
+    lbl_size = np.array([len(str(w)) for w in text]) * 3
+    tmp = np.multiply(n, lbl_size[:, np.newaxis])
+    blank_start = centers - (n * 3 + tmp)
+    blank_end = centers + (n * 3 + tmp)
+    blank_xs = np.vstack((blank_start[:,0], blank_end[:,0])).T
+    blank_ys = np.vstack((blank_start[:,1], blank_end[:,1])).T
+
+    x = (x / x_scale) - margin_shift_x + plot.x_range.start
+    y = (y / y_scale) - margin_shift_y + plot.y_range.start
+    blank_xs = (blank_xs / x_scale) - margin_shift_x + plot.x_range.start
+    blank_ys = (blank_ys / y_scale) - margin_shift_y + plot.y_range.start
+
+    plot.multi_line(xs=blank_xs.tolist(), ys=blank_ys.tolist(),
+                    line_color='white', line_width=LINE_WIDTH+1,
+                    nonselection_line_alpha=1, level='image')
+
+    labels_src = ColumnDataSource(data={'x': x, 'y': y, 'text': text})
+    labels = LabelSet(x='x', y='y', text='text', text_align='center',
+                      text_baseline='middle', text_font_size='13px',
+                      text_color='black', level='overlay', source=labels_src)
+    plot.add_layout(labels)
 
 
 def _get_create_divs(plot:Figure,
