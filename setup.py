@@ -25,7 +25,6 @@ setup(
         'numpy>=1.19',
         'pandas>=1.1',
         'networkx>=2.0',
-        'ortools>=8',
         'bokeh>=2.2',
         'typing>=3.7',
     ],
