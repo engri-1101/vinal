@@ -5,7 +5,7 @@ This module contains various functions to plot graphs and algorithms.
 
 __author__ = 'Henry Robbins'
 __all__ = ['plot_tour', 'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
-           'plot_tsp_heuristic', 'plot_etching_tour', 'plot_create_tour',
+           'plot_tsp_heuristic', 'plot_create_tour',
            'plot_create_spanning_tree', 'plot_assisted_mst_algorithm',
            'plot_assisted_dijkstras']
 
@@ -96,35 +96,38 @@ def _graph_range(x:List[float], y:List[float]) -> List[float]:
 def _blank_plot(G:nx.Graph,
                 width:int = None,
                 height:int = None,
+                x_range:List[float] = None,
+                y_range:List[float] = None,
                 image:str = None, **kw) -> Figure:
     """Return a blank bokeh plot.
 
-    If an image is provided, the dimensions of the image form the x and y range
-    of the plot. Otherwise, these are computed to make all nodes visible.
+    The x and y axis ranges are chosen from x_range and y_range first. If one
+    or both are not specified then, it defaults to make all nodes of G visible
+    or uses the dimensions of the image if an image was provided.
 
     Args:
         G (nx.Graph): Graph to be plotted on this blank plot.
         width (int, optional): Plot width. Defaults to None.
         height (int, optional): Plot height. Defaults to None.
+        x_range (List[float], optional): Range of x-axis (min_x, max_x).
+        y_range (List[float], optional): Range of y-axis (min_y, max_y).
         image (str, optional): Path to image file. Defaults to None.
 
     Returns:
         Figure: Blank bokeh plot.
     """
-    if image is not None:
-        im = Image.open(image)
-        max_x, max_y = im.size
-        min_x, min_y = 0,0
+    if x_range is not None and y_range is not None:
+        min_x, max_x = x_range
+        min_y, max_x = y_range
     else:
-        if 'x_start' in list(G.nodes[0]):
-            x = (list(nx.get_node_attributes(G,'x_start').values()) +
-                 list(nx.get_node_attributes(G,'x_end').values()))
-            y = (list(nx.get_node_attributes(G,'y_start').values()) +
-                 list(nx.get_node_attributes(G,'y_end').values()))
+        if image is not None:
+            im = Image.open(image)
+            max_x, max_y = im.size
+            min_x, min_y = 0,0
         else:
             x = nx.get_node_attributes(G,'x').values()
             y = nx.get_node_attributes(G,'y').values()
-        min_x, max_x, min_y, max_y = _graph_range(x,y)
+            min_x, max_x, min_y, max_y = _graph_range(x,y)
     plot = figure(x_range=(min_x, max_x),
                   y_range=(min_y, max_y),
                   title="",
@@ -519,51 +522,6 @@ def plot_tree(G:nx.Graph,
     cost = spanning_tree_cost(G, tree)
     _plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree.edges,
                 cost=cost, **kw)
-
-
-def plot_etching_tour(G:nx.Graph, tour:List[int], **kw):
-    """Plot the tour on the etching problem.
-
-    Args:
-        G (nx.Graph): Networkx graph.
-        tour (List[int]): Tour of the graph
-    """
-    # nodes
-    x_start = list(nx.get_node_attributes(G,'x_start').values())
-    x_end = list(nx.get_node_attributes(G,'x_end').values())
-    y_start = list(nx.get_node_attributes(G,'y_start').values())
-    y_end = list(nx.get_node_attributes(G,'y_end').values())
-
-    node_xs = [(G.nodes[i]['x_start'], G.nodes[i]['x_end']) for i in G.nodes]
-    node_ys = [(G.nodes[i]['y_start'], G.nodes[i]['y_end']) for i in G.nodes]
-
-    # tour edges
-    xs = []
-    ys = []
-    for i in range(len(tour)-1):
-        xs.append((G.nodes[tour[i]]['x_end'], G.nodes[tour[i+1]]['x_start']))
-        ys.append((G.nodes[tour[i]]['y_end'], G.nodes[tour[i+1]]['y_start']))
-
-    plot = _blank_plot(G, **kw)
-
-    cost_text = '%.1f' % tour_cost(G, tour)
-    cost = Div(text=cost_text, width=plot.plot_width, align='center')
-    plot.multi_line(xs=node_xs, ys=node_ys, line_color='black', line_width=2)
-    plot.multi_line(xs=xs, ys=ys, line_color='black', line_width=2,
-                    line_dash='dashed')
-    plot.circle(x_start, y_start, size=5, line_color='steelblue',
-                fill_color='steelblue')
-    plot.circle(x_end, y_end, size=5, line_color='#DC0000',
-                fill_color='#DC0000')
-
-    # create layout
-    grid = gridplot([[plot],[cost]],
-                    plot_width=plot.plot_width, plot_height=plot.plot_height,
-                    toolbar_location=None,
-                    toolbar_options={'logo': None})
-
-    show(grid)
-
 
 # ----------------------------
 # Non-Static Plotting Fuctions
