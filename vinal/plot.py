@@ -114,7 +114,7 @@ def _blank_plot(G:nx.Graph,
     """
     if x_range is not None and y_range is not None:
         min_x, max_x = x_range
-        min_y, max_x = y_range
+        min_y, max_y = y_range
     else:
         if image is not None:
             im = Image.open(image)
