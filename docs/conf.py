@@ -47,8 +47,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-# TODO: Create logo for vinal.
-html_logo = 'cornell/vinal_logo.svg'
+html_logo = 'cornell/vinal_logo.png'
 html_theme_options = {
     'logo_only': True,
     'style_nav_header_background': '#b31b1b',
