@@ -41,12 +41,13 @@ First, import the ```vinal``` package (commonly renamed to ```vl```).
 ```python
 import vinal as vl
 
-# Include this if you would like plots to appear within a Jupyter Notebook
-from bokeh.io import output_notebook
-output_notebook()
+# Calling output_notebook() makes show() display plot in a Jupyter Notebook.
+# Without it, a new tab with the plot will be opened.
+from bokeh.io import output_notebook, show
+output_notebook()  # only include if you want plot inline
 ```
 
-All of the algorithm and plotting functions take a NetworkX graph as input. The ```build``` module provides a way of constructing NetworkX graphs from ```.csv``` files. The standard ```nodes.csv``` and ```edges.csv``` files have the following form:
+All of the algorithm and plotting functions take a NetworkX graph as input. The```build``` module provides a way of constructing NetworkX graphs from ```.csv``` files. The standard ```nodes.csv``` and ```edges.csv``` files have the following form:
 
 | nodes.csv | x | y |
 | --------- | - | - |
@@ -133,7 +134,7 @@ After genrating a solution via one of the algorithms, a static plot of the solut
 
 ```python
 tour = vl.nearest_insertion(G, initial_tour=[0,1,0])
-vl.plot_tour(G, tour)
+show(vl.tour_plot(G, tour))
 ```
 
 ![nearest_insertion_plot_tour](images/nearest_insertion_tour_plot.png?raw=true)
@@ -142,7 +143,7 @@ If one wishes to see each iteration of the algorithm, a plot with a ```Previous`
 
 ```python
 tour = vl.random neighbor(G)
-vl.plot_tsp_heuristic(G, algorithm='2-OPT', tour=tour)
+show(vl.tsp_heuristic_plot(G, algorithm='2-OPT', tour=tour))
 ```
 
 ![2-opt](images/2-opt.png?raw=true)
@@ -150,8 +151,8 @@ vl.plot_tsp_heuristic(G, algorithm='2-OPT', tour=tour)
 Tours and spanning trees can also be constructed in a point-and-click fashion. When creating a tour, click the next node you wish to visit. When creating a spanning tree, click each edge you want in the tree.
 
 ```python
-vl.plot_create_spanning_tree(G)
-vl.plot_create_tour(G)
+show(vl.create_spanning_tree_plot(G))
+show(vl.create_tour_plot(G))
 ```
 
 ![build_tour](images/build_tour.png?raw=true)
@@ -159,7 +160,7 @@ vl.plot_create_tour(G)
 Lastly, an interactive version of Dijkstra's algorithm and the MST algorithms can be plotted. For Dijkstra's algorithm, the user is asked to select the next node from the frontier set to explore. For the MST algorithms, the user is asked to select the next edge to be added/removed from the tree. In all cases, a helpful error message will appear when the user selects incorreclty.
 
 ```python
-vl.plot_assisted_mst_algorithm(G, algorithm='kruskals')
+show(vl.assisted_mst_algorithm_plot(G, algorithm='kruskals'))
 ```
 
 ![kruskals_assisted](images/kruskals_assisted.png?raw=true)

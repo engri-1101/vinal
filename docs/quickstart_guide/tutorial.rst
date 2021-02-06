@@ -5,11 +5,12 @@ First, import the :code:`vinal` package (commonly renamed to :code:`vl`).
 
 .. code-block:: python
 
-    import vinal as vl
+   import vinal as vl
 
-   # Include this if you would like plots to appear within a Jupyter Notebook
-   from bokeh.io import output_notebook
-   output_notebook()
+   # Calling output_notebook() makes show() display plot in a Jupyter Notebook.
+   # Without it, a new tab with the plot will be opened.
+   from bokeh.io import output_notebook, show
+   output_notebook()  # only include if you want plot inline
 
 
 All of the algorithm and plotting functions take a NetworkX graph as input. The
@@ -122,7 +123,7 @@ insertion and then plotted.
 .. code-block:: python
 
    tour = vl.nearest_insertion(G, initial_tour=[0,1,0])
-   vl.plot_tour(G, tour)
+   show(vl.tour_plot(G, tour))
 
 
 If one wishes to see each iteration of the algorithm, a plot with a
@@ -135,7 +136,7 @@ random neighbor and then a plot is returned showing each iteration of the
 .. code-block:: python
 
    tour = vl.random neighbor(G)
-   vl.plot_tsp_heuristic(G, algorithm='2-OPT', tour=tour)
+   show(vl.tsp_heuristic_plot(G, algorithm='2-OPT', tour=tour))
 
 
 Tours and spanning trees can also be constructed in a point-and-click fashion.
@@ -144,8 +145,8 @@ a spanning tree, click each edge you want in the tree.
 
 .. code-block:: python
 
-   vl.plot_create_spanning_tree(G)
-   vl.plot_create_tour(G)
+   show(vl.create_spanning_tree_plot(G))
+   show(vl.create_tour_plot(G))
 
 Lastly, an interactive version of Dijkstra's algorithm and the MST algorithms
 can be plotted. For Dijkstra's algorithm, the user is asked to select the next
@@ -155,4 +156,4 @@ a helpful error message will appear when the user selects incorreclty.
 
 .. code-block:: python
 
-   vl.plot_assisted_mst_algorithm(G, algorithm='kruskals')
+   show(vl.assisted_mst_algorithm_plot(G, algorithm='kruskals'))
