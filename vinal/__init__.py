@@ -31,7 +31,7 @@ from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, random_neighbor,
                          nearest_neighbor, insertion, nearest_insertion,
                          furthest_insertion, two_opt, tour_cost)
-from .plot import (plot_tour, plot_tree, plot_dijkstras, plot_mst_algorithm,
-                   plot_tsp_heuristic, plot_create_tour,
-                   plot_create_spanning_tree, plot_assisted_mst_algorithm,
-                   plot_assisted_dijkstras)
+from .plot import (tour_plot, tree_plot, dijkstras_plot, mst_algorithm_plot,
+                   tsp_heuristic_plot, create_tour_plot,
+                   create_spanning_tree_plot, assisted_mst_algorithm_plot,
+                   assisted_dijkstras_plot)

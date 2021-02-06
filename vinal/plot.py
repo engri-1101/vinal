@@ -4,10 +4,10 @@ This module contains various functions to plot graphs and algorithms.
 """
 
 __author__ = 'Henry Robbins'
-__all__ = ['plot_tour', 'plot_tree', 'plot_dijkstras', 'plot_mst_algorithm',
-           'plot_tsp_heuristic', 'plot_create_tour',
-           'plot_create_spanning_tree', 'plot_assisted_mst_algorithm',
-           'plot_assisted_dijkstras']
+__all__ = ['tour_plot', 'tree_plot', 'dijkstras_plot', 'mst_algorithm_plot',
+           'tsp_heuristic_plot', 'create_tour_plot',
+           'create_spanning_tree_plot', 'assisted_mst_algorithm_plot',
+           'assisted_dijkstras_plot']
 
 
 import numpy as np
@@ -21,7 +21,6 @@ from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
                          tour_cost, Tree)
 from bokeh.plotting import figure, Figure
-from bokeh.io import show
 from bokeh.models.widgets.markups import Div
 from bokeh.models.widgets.tables import TableColumn, DataTable
 from bokeh.models.renderers import GlyphRenderer
@@ -454,12 +453,12 @@ def _get_grid(plot:Figure,
 # ------------------------
 
 
-def _plot_graph(G:nx.Graph,
+def _graph_plot(G:nx.Graph,
                 edges:List[Tuple[int]],
                 cost:float = None,
                 show_all_edges:bool = True,
-                show_labels:bool = True, **kw):
-    """Plot the graph G highlighting the given edges.
+                show_labels:bool = True, **kw) -> GridBox:
+    """Return a plot of the graph G with given edges highlighted.
 
     Args:
         G (nx.Graph): Graph to be plotted.
@@ -467,6 +466,9 @@ def _plot_graph(G:nx.Graph,
         cost (float, optional): Cost to be displayed. Defaults to None.
         show_all_edges (bool, optional): True iff all edges should be shown.
         show_labels (bool, optional): True iff labels should be shown.
+
+    Returns:
+        GridBox: Plot of the graph G with given edges highlighted.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -494,49 +496,55 @@ def _plot_graph(G:nx.Graph,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
-    show(grid)
+    return grid
 
 
-def plot_tour(G:nx.Graph, tour:List[int], **kw):
-    """Plot the tour on graph G.
+def tour_plot(G:nx.Graph, tour:List[int], **kw) -> GridBox:
+    """Return a plot of the tour on graph G.
 
     Args:
         G (nx.Graph): Networkx graph.
         tour (List[int]): Tour of the graph.
+
+    Returns:
+        GridBox: Plot of the tour on graph G.
     """
     cost = tour_cost(G, tour)
     edges = [(tour[i], tour[i+1]) for i in range(len(tour)-1)]
-    _plot_graph(G=G, show_all_edges=False, show_labels=False, edges=edges,
-                cost=cost, **kw)
+    return _graph_plot(G=G, show_all_edges=False, show_labels=False,
+                       edges=edges, cost=cost, **kw)
 
 
-def plot_tree(G:nx.Graph,
+def tree_plot(G:nx.Graph,
               tree:List[Tuple[int]],
               show_cost:bool = False, **kw):
-    """Plot the tree on graph G.
+    """Return a plot of the tree on graph G.
 
     Args:
         G (nx.Graph): Networkx graph.
         tree (List[int]): List of edges in the tree.
+
+    Returns:
+        GridBox: Plot of the tree on graph G.
     """
     cost = spanning_tree_cost(G, tree)
-    _plot_graph(G=G, show_all_edges=True, show_labels=True, edges=tree.edges,
-                cost=cost, **kw)
+    return _graph_plot(G=G, show_all_edges=True, show_labels=True,
+                       edges=tree.edges, cost=cost, **kw)
 
 # ----------------------------
 # Non-Static Plotting Fuctions
 # ----------------------------
 
 
-def _plot_graph_iterations(G:nx.Graph,
+def _graph_iterations_plot(G:nx.Graph,
                            nodes:List[List[int]] = None,
                            edges:List[List[List[int]]] = None,
                            costs:List[float] = None,
                            tables:List[pd.DataFrame] = None,
                            swaps:List[List[int]] = None,
                            show_all_edges:bool = True,
-                           show_labels:bool = True, **kw):
-    """Plot multiple iterations of a graph that can be toggled through.
+                           show_labels:bool = True, **kw) -> GridBox:
+    """Return a plot of multiple iterations of a graph.
 
     Args:
         G (nx.Graph): Networkx graph.
@@ -547,6 +555,9 @@ def _plot_graph_iterations(G:nx.Graph,
         swaps (List[List[int]]): Edge swap to highlight at every iteration.
         show_all_edges (bool, optional): True iff all edges should be shown.
         show_labels (bool, optional): True iff labels should be shown.
+
+    Returns:
+        GridBox: Plot of multiple iterations of a graph.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -678,27 +689,34 @@ def _plot_graph_iterations(G:nx.Graph,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
-    show(grid)
+    return grid
 
 
-def plot_dijkstras(G:nx.Graph, s:int = 0, **kw):
-    """Plot Dijkstra's algorithm running on graph G with source s.
+def dijkstras_plot(G:nx.Graph, s:int = 0, **kw) -> GridBox:
+    """Return plot of Dijkstra's algorithm running on graph G with source s.
 
     Args:
         G (nx.Graph): Networkx graph.
         s (int): Source vertex to run the algorithm from. (Defaults to 0)
+
+    Returns:
+        GridBox: Plot of Dijkstra's algorithm running on graph G with source s.
     """
     nodes, trees, tables = dijkstras(G, s=s, iterations=True)
     edges = [tree.edges for tree in trees]
-    _plot_graph_iterations(G, nodes=nodes, edges=edges, tables=tables, **kw)
+    return _graph_iterations_plot(G, nodes=nodes, edges=edges,
+                                  tables=tables, **kw)
 
 
-def plot_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
-    """Plot the MST algorithm running on the graph G.
+def mst_algorithm_plot(G:nx.Graph, algorithm:str, **kw) -> GridBox:
+    """Return plot of the given MST algorithm running on the graph G.
 
     Args:
         G (nx.Graph): Networkx graph.
         algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
+
+    Returns:
+        GridBox: Plot of the given MST algorithm running on the graph G.
     """
     if algorithm == 'prims':
         trees = prims(G, i=kw['i'], iterations=True)
@@ -711,16 +729,20 @@ def plot_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
     for edge in edges:
         nodes.append(list(set([item for sublist in edge for item in sublist])))
     costs = [spanning_tree_cost(G, tree) for tree in trees]
-    _plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs, **kw)
+    return _graph_iterations_plot(G, nodes=nodes, edges=edges,
+                                  costs=costs, **kw)
 
 
-def plot_tsp_heuristic(G:nx.Graph, algorithm:str, **kw):
-    """Plot the TSP heuristic running on G.
+def tsp_heuristic_plot(G:nx.Graph, algorithm:str, **kw) -> GridBox:
+    """Return a plot of the given TSP heuristic running on G.
 
     Args:
         G (nx.Graph): Networkx graph.
         algorithm (str): {'random_neighbor', 'nearest_neighbor',
                           'nearest_insertion', 'furthest_insertion', '2-OPT'}
+
+    Returns:
+        GridBox: Plot of the given TSP heuristic running on G.
     """
     swaps = None
     if algorithm == 'random_neighbor':
@@ -746,10 +768,9 @@ def plot_tsp_heuristic(G:nx.Graph, algorithm:str, **kw):
     for tour in tours:
         edges.append([(tour[i], tour[i+1]) for i in range(len(tour)-1)])
     costs = [tour_cost(G, tour) for tour in tours]
-    _plot_graph_iterations(G, nodes=nodes, edges=edges, costs=costs,
-                           swaps=swaps, show_all_edges=False,
-                           show_labels=False, **kw)
-    return tours[-1]
+    return _graph_iterations_plot(G, nodes=nodes, edges=edges, costs=costs,
+                                  swaps=swaps, show_all_edges=False,
+                                  show_labels=False, **kw)
 
 
 # -----------------------------
@@ -757,11 +778,14 @@ def plot_tsp_heuristic(G:nx.Graph, algorithm:str, **kw):
 # -----------------------------
 
 
-def plot_create_tour(G:nx.Graph, **kw):
-    """Plot in which you can create a tour.
+def create_tour_plot(G:nx.Graph, **kw) -> GridBox:
+    """Return a plot in which you can create a tour.
 
     Args:
         G (nx.Graph): Networkx graph.
+
+    Rerturns:
+        GridBox: Plot in which you can create a tour.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -793,14 +817,17 @@ def plot_create_tour(G:nx.Graph, **kw):
                tour_src=tour_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked))
+    return _get_grid(plot, cost, error_msg, clicked)
 
 
-def plot_create_spanning_tree(G:nx.Graph, **kw):
-    """Plot in which you can create a spanning tree.
+def create_spanning_tree_plot(G:nx.Graph, **kw) -> GridBox:
+    """Return a plot in which you can create a spanning tree.
 
     Args:
         G (nx.Graph): Networkx graph.
+
+    Returns:
+        GridBox: Plot in which you can create a spanning tree.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -831,15 +858,18 @@ def plot_create_spanning_tree(G:nx.Graph, **kw):
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked))
+    return _get_grid(plot, cost, error_msg, clicked)
 
 
-def plot_assisted_dijkstras(G, s=0, **kw):
-    """Plot in which the user creates a shortest path tree from s.
+def assisted_dijkstras_plot(G, s=0, **kw) -> GridBox:
+    """Return a plot in which the user creates a shortest path tree from s.
 
     Args:
         G (nx.Graph): Networkx graph.
         s (int): The vertex to generate a shortest path tree from.
+
+    Returns:
+        GridBox: Plot in which the user creates a shortest path tree from s.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -900,15 +930,18 @@ def plot_assisted_dijkstras(G, s=0, **kw):
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
-    show(grid)
+    return grid
 
 
-def plot_assisted_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
-    """Plot in which the user creates an MST using the given algorithm.
+def assisted_mst_algorithm_plot(G:nx.Graph, algorithm:str, **kw) -> GridBox:
+    """Return a plot in which the user creates an MST with the given algorithm.
 
     Args:
         G (nx.Graph): Networkx graph.
         algorithm (str): {'prims', 'kruskals', 'reverse_kruskals'}
+
+    Returns:
+        GridBox: Plot in which the user creates an MST with given algorithm.
     """
     G = G.copy()
     plot = _blank_plot(G, **kw)
@@ -977,4 +1010,4 @@ def plot_assisted_mst_algorithm(G:nx.Graph, algorithm:str, **kw):
                edges_src=edges_src, cost_matrix=cost_matrix, cost=cost,
                error_msg=error_msg, clicked=clicked)
 
-    show(_get_grid(plot, cost, error_msg, clicked))
+    return _get_grid(plot, cost, error_msg, clicked)
