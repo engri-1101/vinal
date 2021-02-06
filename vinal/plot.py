@@ -50,6 +50,13 @@ NODE_SIZE = 11
 NODE_LINE_WIDTH = 3
 LINE_WIDTH = 5
 PLOT_MARGIN = 0.085
+# Order: image, underlay, glyph, guide, annotation, overlay
+LABEL_LEVEL = 'annotation'
+LABEL_BACKGROUND_LEVEL = 'guide'
+NODE_LEVEL = 'glyph'
+EDGE_LEVEL = 'underlay'
+IMAGE_LEVEL = 'image'
+
 
 CONSTANTS_JS = resource_stream('vinal.resources',
                                'constants.js').read().decode("utf-8")
@@ -151,7 +158,7 @@ def _add_image(plot:Figure, image:str):
                    y=plot.y_range.end,
                    w=plot.x_range.end - plot.x_range.start,
                    h=plot.y_range.end - plot.y_range.start,
-                   level='image')
+                   level=IMAGE_LEVEL)
 
 
 def _edge_positions(G:nx.Graph,
@@ -241,7 +248,7 @@ def _add_nodes(G:nx.Graph,
     nodes_df = pd.DataFrame([G.nodes[u] for u in sorted(G.nodes())])
     nodes_src = ColumnDataSource(data=nodes_df.to_dict(orient='list'))
 
-    nodes_glyph = plot.circle(x='x', y='y', size=NODE_SIZE, level='glyph',
+    nodes_glyph = plot.circle(x='x', y='y', size=NODE_SIZE, level=NODE_LEVEL,
                               line_color='line_color', fill_color='fill_color',
                               line_width='line_width',
                               nonselection_fill_alpha=1,
@@ -278,7 +285,7 @@ def _add_edges(G:nx.Graph,
                                   hover_line_color=hover_line_color,
                                   line_width=LINE_WIDTH,
                                   nonselection_line_alpha=1,
-                                  level='image',
+                                  level=EDGE_LEVEL,
                                   source=edges_src)
 
     if show_labels:
@@ -328,12 +335,12 @@ def _add_labels(G:nx.Graph, plot:Figure):
 
     plot.multi_line(xs=blank_xs.tolist(), ys=blank_ys.tolist(),
                     line_color='white', line_width=LINE_WIDTH+1,
-                    nonselection_line_alpha=1, level='image')
+                    nonselection_line_alpha=1, level=LABEL_BACKGROUND_LEVEL)
 
     labels_src = ColumnDataSource(data={'x': x, 'y': y, 'text': text})
     labels = LabelSet(x='x', y='y', text='text', text_align='center',
                       text_baseline='middle', text_font_size='13px',
-                      text_color='black', level='overlay', source=labels_src)
+                      text_color='black', level=LABEL_LEVEL, source=labels_src)
     plot.add_layout(labels)
 
 
@@ -471,7 +478,7 @@ def _plot_graph(G:nx.Graph,
     if len(edges) > 0:
         xs, ys = _edge_positions(G, edges)
         plot.multi_line(xs=xs, ys=ys, line_cap='round', line_width=LINE_WIDTH,
-                        line_color=TERTIARY_DARK_COLOR, level='image')
+                        line_color=TERTIARY_DARK_COLOR, level=EDGE_LEVEL)
 
     cost_txt = '' if cost is None else ('%.1f' % cost)
     cost = Div(text=cost_txt, width=int(plot.plot_width/2), align='center')
@@ -626,7 +633,7 @@ def _plot_graph_iterations(G:nx.Graph,
         edge_subset_src = ColumnDataSource(data={'xs': edge_xs[0],
                                                  'ys': edge_ys[0]})
         plot.multi_line('xs', 'ys', line_color=TERTIARY_DARK_COLOR,
-                        line_width=LINE_WIDTH, level='underlay',
+                        line_width=LINE_WIDTH, level=EDGE_LEVEL,
                         line_cap='round', source=edge_subset_src)
         args_dict['edge_subset_src'] = edge_subset_src
 
@@ -667,10 +674,10 @@ def _plot_graph_iterations(G:nx.Graph,
                                            'swaps_after_y': swaps_after_y[0]})
         plot.multi_line(xs='swaps_before_x', ys='swaps_before_y',
                         line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
-                        line_cap='round', level='underlay', source=swaps_src)
+                        line_cap='round', level=EDGE_LEVEL, source=swaps_src)
         plot.multi_line(xs='swaps_after_x', ys='swaps_after_y',
                         line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
-                        line_cap='round', level='underlay',
+                        line_cap='round', level=EDGE_LEVEL,
                         line_dash=[10,12], source=swaps_src)
         args_dict['swaps_src'] = swaps_src
 
@@ -816,7 +823,7 @@ def plot_create_tour(G:nx.Graph, **kw):
     tour_src = ColumnDataSource(data={'edges_x': [],
                                       'edges_y': []})
     plot.line(x='edges_x', y='edges_y', line_color=TERTIARY_DARK_COLOR,
-              line_cap='round', line_width=LINE_WIDTH, level='image',
+              line_cap='round', line_width=LINE_WIDTH, level=EDGE_LEVEL,
               source=tour_src)
 
     cost, clicked, error_msg = _get_create_divs(plot)
