@@ -7,7 +7,7 @@ __author__ = 'Henry Robbins'
 __all__ = ['dijkstras', 'prims', 'kruskals', 'reverse_kruskals',
            'spanning_tree_cost', 'neighbor', 'random_neighbor',
            'nearest_neighbor', 'insertion', 'nearest_insertion',
-           'furthest_insertion', 'two_opt', 'solve_tsp', 'tour_cost']
+           'furthest_insertion', 'two_opt', 'tour_cost']
 
 
 import math

@@ -13,29 +13,30 @@ import networkx as nx
 from typing import Union
 
 
-def distance_matrix(nodes:pd.DataFrame, manhattan:bool = True) -> np.ndarray:
+def distance_matrix(nodes:pd.DataFrame,
+                    manhattan:bool = False,
+                    x_i:str = 'x',
+                    y_i:str = 'y',
+                    x_j:str = 'x',
+                    y_j:str = 'y') -> np.ndarray:
     """Compute the distance matrix between the nodes.
 
-    Nodes dataframe should contain either columns 'x' and 'y' specifying each
-    node location or columns 'x_start', 'y_start', 'x_end', and 'y_end' in the
-    case that a node has a different start and end location.
+    Returns a distance matrix where entry (i,j) corresponds to the distance
+    from the node i to node j.
 
     Args:
         nodes (pd.DataFrame): Dataframe of nodes with at least (x,y) positions.
         manhattan (bool): {True: manhattan distance, False : euclidian}.
+        x_i (str): Column with the x coordinate of node i (Defaults to 'x').
+        y_i (str): Column with the y coordinate of node i (Defaults to 'y').
+        x_j (str): Column with the x coordinate of node j (Defaults to 'x').
+        y_j (str): Column with the y coordinate of node j (Defaults to 'y').
 
     Returns:
         np.ndarray: Distance matrix between these nodes.
     """
-    if 'x_start' not in nodes.columns:
-        A = np.array(list(zip(nodes['x'].tolist(), nodes['y'].tolist())))
-        B = A
-    else:
-        A = np.array(list(zip(nodes['x_start'].tolist(),
-                              nodes['y_start'].tolist())))
-        B = np.array(list(zip(nodes['x_end'].tolist(),
-                              nodes['y_end'].tolist())))
-
+    A = np.array(list(zip(nodes[x_i].tolist(), nodes[y_i].tolist())))
+    B = np.array(list(zip(nodes[x_j].tolist(), nodes[y_j].tolist())))
     if manhattan:
         return np.abs(A[:,0,None] - B[:,0]) + np.abs(A[:,1,None] - B[:,1])
     else:
