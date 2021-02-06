@@ -125,6 +125,10 @@ insertion and then plotted.
    tour = vl.nearest_insertion(G, initial_tour=[0,1,0])
    show(vl.tour_plot(G, tour))
 
+.. raw:: html
+   :file: NEAREST_INSERTION_TOUR.html
+
+|
 
 If one wishes to see each iteration of the algorithm, a plot with a
 :code:`Previous` and :code:`Next` button can be generated. In most cases,
@@ -138,6 +142,10 @@ random neighbor and then a plot is returned showing each iteration of the
    tour = vl.random neighbor(G)
    show(vl.tsp_heuristic_plot(G, algorithm='2-OPT', tour=tour))
 
+.. raw:: html
+   :file: 2-OPT_ITERATIONS.html
+
+|
 
 Tours and spanning trees can also be constructed in a point-and-click fashion.
 When creating a tour, click the next node you wish to visit. When creating
@@ -148,6 +156,11 @@ a spanning tree, click each edge you want in the tree.
    show(vl.create_spanning_tree_plot(G))
    show(vl.create_tour_plot(G))
 
+.. raw:: html
+   :file: CREATE_TOUR.html
+
+|
+
 Lastly, an interactive version of Dijkstra's algorithm and the MST algorithms
 can be plotted. For Dijkstra's algorithm, the user is asked to select the next
 node from the frontier set to explore. For the MST algorithms, the user is
@@ -157,3 +170,8 @@ a helpful error message will appear when the user selects incorreclty.
 .. code-block:: python
 
    show(vl.assisted_mst_algorithm_plot(G, algorithm='kruskals'))
+
+.. raw:: html
+   :file: ASSISTED_KRUSKALS.html
+
+|

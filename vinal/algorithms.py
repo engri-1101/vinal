@@ -300,8 +300,8 @@ def insertion(G:nx.Graph,
     tours = [tour.copy()]
 
     while len(unvisited) > 0:
-        d = A[:,tour[-1]].min(axis=1)
-        d = {i: d[i] for i in range(len(d)) if i in unvisited}
+        d = A[:,tour].min(axis=1)
+        d = {i: float(d[i]) for i in range(len(d)) if i in unvisited}
         if nearest:
             min_val = min(d.values())
             possible = [k for k, v in d.items() if v == min_val]

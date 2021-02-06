@@ -49,7 +49,7 @@ def distance_matrix(nodes:pd.DataFrame,
 def create_network(nodes:pd.DataFrame,
                    edges:pd.DataFrame = None,
                    directed:bool = False,
-                   manhattan:bool = True) -> Union[nx.Graph, nx.DiGraph]:
+                   manhattan:bool = False) -> Union[nx.Graph, nx.DiGraph]:
     """Return networkx graph derived from the list of nodes/edges.
 
     If no edges are given, defaults to generating all edges with
@@ -81,7 +81,7 @@ def create_network(nodes:pd.DataFrame,
     return G
 
 
-def grid_instance(n:int, m:int, manhattan:bool = True) -> nx.Graph:
+def grid_instance(n:int, m:int, manhattan:bool = False) -> nx.Graph:
     """Return a graph G representing an n x m set of nodes.
 
     Args:
