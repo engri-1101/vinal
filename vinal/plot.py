@@ -520,11 +520,12 @@ def tree_plot(G:nx.Graph,
     Args:
         G (nx.Graph): Networkx graph.
         tree (List[int]): List of edges in the tree.
+        show_cost (bool): True if cost of tree should be shown on plot.
 
     Returns:
         GridBox: Plot of the tree on graph G.
     """
-    cost = spanning_tree_cost(G, tree)
+    cost = spanning_tree_cost(G, tree) if show_cost else None
     return _graph_plot(G=G, show_all_edges=True, show_labels=True,
                        edges=tree, cost=cost, **kw)
 
