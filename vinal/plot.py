@@ -704,8 +704,7 @@ def dijkstras_plot(G:nx.Graph, s:int = 0, **kw) -> GridBox:
         GridBox: Plot of Dijkstra's algorithm running on graph G with source s.
     """
     nodes, trees, tables = dijkstras(G, s=s, iterations=True)
-    edges = [tree.edges for tree in trees]
-    return _graph_iterations_plot(G, nodes=nodes, edges=edges,
+    return _graph_iterations_plot(G, nodes=nodes, edges=trees,
                                   tables=tables, **kw)
 
 
@@ -725,12 +724,11 @@ def mst_algorithm_plot(G:nx.Graph, algorithm:str, **kw) -> GridBox:
         trees = kruskals(G, iterations=True)
     elif algorithm == 'reverse_kruskals':
         trees = reverse_kruskals(G, iterations=True)
-    edges = [tree.edges for tree in trees]
     nodes = []
-    for edge in edges:
-        nodes.append(list(set([item for sublist in edge for item in sublist])))
+    for tree in trees:
+        nodes.append(list(set([item for sublist in tree for item in sublist])))
     costs = [spanning_tree_cost(G, tree) for tree in trees]
-    return _graph_iterations_plot(G, nodes=nodes, edges=edges,
+    return _graph_iterations_plot(G, nodes=nodes, edges=trees,
                                   costs=costs, **kw)
 
 
