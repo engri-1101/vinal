@@ -19,7 +19,7 @@ import pkgutil
 from typing import List, Tuple, Dict, Union
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
-                         tour_cost, Tree)
+                         tour_cost)
 from bokeh.plotting import figure, Figure
 from bokeh.models.widgets.markups import Div
 from bokeh.models.widgets.tables import TableColumn, DataTable
@@ -526,7 +526,7 @@ def tree_plot(G:nx.Graph,
     """
     cost = spanning_tree_cost(G, tree)
     return _graph_plot(G=G, show_all_edges=True, show_labels=True,
-                       edges=tree.edges, cost=cost, **kw)
+                       edges=tree, cost=cost, **kw)
 
 # ----------------------------
 # Non-Static Plotting Fuctions
@@ -991,7 +991,7 @@ def assisted_mst_algorithm_plot(G:nx.Graph, algorithm:str, **kw) -> GridBox:
         source = ColumnDataSource(data=src_data)
 
     if algorithm == 'reverse_kruskals':
-        cost_text = '%.1f' % spanning_tree_cost(G, Tree(edges=G.edges))
+        cost_text = '%.1f' % spanning_tree_cost(G, G.edges)
         clicked_edges = [str(x).replace(' ', '') for x in list(G.edges)]
         click_txt = '[' + ','.join(clicked_edges) + ']'
         cost, clicked, error_msg = _get_create_divs(plot, cost_txt=cost_text,

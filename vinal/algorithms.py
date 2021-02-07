@@ -15,16 +15,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 from random import randrange
-from collections import namedtuple
 from typing import List, Tuple, Union
-
-
-Tree = namedtuple('Tree', ['edges'])
-Tree.__doc__ = """\
-Spanning tree of a graph.
-
-- edges (List[Tuple[int]]): Edges in the tree defined by pairs of nodes.
-"""
 
 
 # -------------
@@ -34,7 +25,7 @@ Spanning tree of a graph.
 
 def dijkstras(G:nx.Graph,
               s:int = 0,
-              iterations:bool = False) -> Union[Tree, Tuple]:
+              iterations:bool = False) -> Union[List, Tuple]:
     """Run Dijkstra's algorithm on graph G from source s.
 
     Args:
@@ -43,7 +34,7 @@ def dijkstras(G:nx.Graph,
         iterations (bool): True iff all iterations should be returned.
 
     Returns:
-        Union[Tree, Tuple]: Shortest path tree edges or iterations.
+        Union[List, Tuple]: Shortest path tree edges or iterations.
     """
     # Helper functions
     def create_table(dist, prev, S):
@@ -61,7 +52,7 @@ def dijkstras(G:nx.Graph,
     def shortest_path_tree(prev):
         """Return the shortest path tree defined by prev."""
         edges = [(k,v) for k,v in prev.items() if not math.isnan(v)]
-        return Tree(edges=edges)
+        return edges
 
     dist = {i: float('inf') for i in range(len(G))}
     prev = {i: float('nan') for i in range(len(G))}
@@ -99,7 +90,7 @@ def dijkstras(G:nx.Graph,
 
 def prims(G:nx.Graph(),
           i:int = 0,
-          iterations:bool = False) -> Union[Tree, List[Tree]]:
+          iterations:bool = False) -> Union[List[Tuple[int]], List]:
     """Run Prim's algorithm on graph G starting from node i.
 
     Args:
@@ -108,10 +99,10 @@ def prims(G:nx.Graph(),
         iterations (bool): True iff all iterations should be returned.
 
     Returns:
-        Union[Tree, List[Tree]]: Spanning tree or iterations.
+        Union[List[Tuple[int]], List]: Spanning tree or iterations.
     """
     tree = []
-    trees = [Tree(edges=[])]
+    trees = [[]]
     unvisited = list(range(len(G)))
     unvisited.remove(i)
     visited = [i]
@@ -125,13 +116,13 @@ def prims(G:nx.Graph(),
         unvisited.remove(v)
         visited.append(v)
         tree.append((u,v))
-        trees.append(Tree(edges=list(tree)))
-    return trees if iterations else Tree(edges=tree)
+        trees.append(list(tree))
+    return trees if iterations else tree
 
 
 def kruskals(G:nx.Graph,
              iterations:bool = False
-             ) -> Union[Tree, List[Tree]]:
+             ) -> Union[List[Tuple[int]], List]:
     """Run Kruskal's algorithm on graph G.
 
     Args:
@@ -139,12 +130,12 @@ def kruskals(G:nx.Graph,
         iterations (bool): True iff all iterations should be returned.
 
     Returns:
-        Union[Tree, List[Tree]]: Spanning tree or iterations.
+        Union[List[Tuple[int]], List]: Spanning tree or iterations.
     """
     edges = nx.get_edge_attributes(G,'weight')
     edges = list(dict(sorted(edges.items(), key=lambda item: item[1])))
     tree = []
-    trees = [Tree(edges=[])]
+    trees = [[]]
     forest = {i:i for i in range(len(G))}
     i = 0
     while len(tree) < len(G) - 1:
@@ -155,14 +146,14 @@ def kruskals(G:nx.Graph,
             for k in [k for k,v in forest.items() if v == y]:
                 forest[k] = x
             tree.append((u,v))
-            trees.append(Tree(edges=list(tree)))
+            trees.append(list(tree))
         i += 1
-    return trees if iterations else Tree(edges=tree)
+    return trees if iterations else tree
 
 
 def reverse_kruskals(G:nx.Graph,
                      iterations:bool = False
-                     ) -> Union[Tree, List[Tree]]:
+                     ) -> Union[List[Tuple[int]], List]:
     """Run reverse Kruskal's algorithm on graph G.
 
     Args:
@@ -170,7 +161,7 @@ def reverse_kruskals(G:nx.Graph,
         iterations (bool): True iff all iterations should be returned.
 
     Returns:
-        Union[Tree, List[Tree]]: Spanning tree or iterations.
+        Union[List[Tuple[int]], List]: Spanning tree or iterations.
     """
     edges = nx.get_edge_attributes(G,'weight')
     edges = sorted(edges.items(), key=lambda item: item[1], reverse=True)
@@ -179,7 +170,7 @@ def reverse_kruskals(G:nx.Graph,
     for i in range(len(G)):
         G_prime.add_node(i)
     G_prime.add_edges_from(edges)
-    trees = [Tree(edges=list(G_prime.edges))]
+    trees = [list(G_prime.edges)]
     i = 0
     while len(G_prime.edges) > len(G) - 1:
         u,v = edges[i]
@@ -187,22 +178,22 @@ def reverse_kruskals(G:nx.Graph,
         if not nx.is_connected(G_prime):
             G_prime.add_edge(u,v)
         else:
-            trees.append(Tree(edges=list(G_prime.edges)))
+            trees.append(list(G_prime.edges))
         i += 1
-    return trees if iterations else Tree(edges=list(G_prime.edges))
+    return trees if iterations else list(G_prime.edges)
 
 
-def spanning_tree_cost(G:nx.Graph, tree:Tree) -> float:
+def spanning_tree_cost(G:nx.Graph, tree:List[Tuple[int]]) -> float:
     """Return the cost of the given spanning tree.
 
     Args:
         G (nx.Graph): Networkx graph.
-        tree (Tree): List of edges in the spanning tree.
+        tree (List[Tuple[int]]): List of edges in the spanning tree.
 
     Return
         float: sum of the edge weights in the spanning tree.
     """
-    return sum([G[u][v]['weight'] for u,v in tree.edges])
+    return sum([G[u][v]['weight'] for u,v in tree])
 
 
 # ---------------------------------
