@@ -411,7 +411,8 @@ def _add_tools(plot:Figure,
         renderer (GlyphRenderer): Renderer that should call on_click code.
     """
     on_hover_code = "source.data['last_index'] = cb_data.index.indices[0]"
-    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
+    plot.add_tools(HoverTool(tooltips=[("Index", "$index"),
+                                       ("Name", "@name")],
                              renderers=[nodes_glyph]),
                    HoverTool(tooltips=None,
                              callback=CustomJS(args=dict(source=kw['source']),
@@ -485,7 +486,8 @@ def _graph_plot(G:nx.Graph,
     cost_txt = '' if cost is None else ('%.1f' % cost)
     cost = Div(text=cost_txt, width=int(plot.plot_width/2), align='center')
 
-    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
+    plot.add_tools(HoverTool(tooltips=[("Index", "$index"),
+                                       ("Name", "@name")],
                              renderers=[nodes_glyph]))
     grid = gridplot([[plot],
                      [row(cost)]],
@@ -670,7 +672,8 @@ def _graph_iterations_plot(G:nx.Graph,
                          width_policy='fit', sizing_mode='stretch_width')
     prev_button.js_on_click(CustomJS(args=args_dict, code=prev_btn_code))
 
-    plot.add_tools(HoverTool(tooltips=[("Node", "$index")],
+    plot.add_tools(HoverTool(tooltips=[("Index", "$index"),
+                                       ("Name", "@name")],
                              renderers=[nodes_glyph]))
 
     # create layout
