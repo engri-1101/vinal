@@ -383,7 +383,7 @@ function dijkstras() {
             nodes_src.data['fill_color'][i] = PRIMARY_DARK_COLOR
             nodes_src.data['line_color'][i] = PRIMARY_DARK_COLOR
         } else if (F.includes(i)) {
-            nodes_src.data['fill_color'][i] = SECONDARY_LIGHT_COLOR
+            nodes_src.data['fill_color'][i] = SECONDARY_COLOR
             nodes_src.data['line_color'][i] = SECONDARY_DARK_COLOR
         } else {
             nodes_src.data['fill_color'][i] = PRIMARY_LIGHT_COLOR
