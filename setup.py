@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="vinal",
-    version="0.0.1",
+    version="0.0.2",
     author="Henry Robbins",
     author_email="hwr26@cornell.edu",
     description="A Python package for visualizing graph algorithms.",
