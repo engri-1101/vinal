@@ -1,4 +1,4 @@
-# vinal (VIsualize Network ALgorithms)
+# <img alt="vinal" src="docs/branding/vinal_color.png" height="90">
 
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/gilp.svg)](https://pypi.python.org/pypi/gilp/)
 [![Documentation Status](https://readthedocs.org/projects/vinal/badge/?version=latest)](https://vinal.readthedocs.io/en/latest/?badge=latest)

@@ -1,6 +1,6 @@
-.. image:: cornell/logo_red.svg
-   :width: 50%
-   :alt: Cornell University Seal
+.. image:: branding/vinal_color.png
+  :height: 150
+  :alt: vinal
 
 |
 

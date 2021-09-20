@@ -47,10 +47,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_logo = 'cornell/vinal_logo.png'
+html_logo = 'branding/vinal_light.png'
 html_theme_options = {
     'logo_only': True,
-    'style_nav_header_background': '#b31b1b',
+    'style_nav_header_background': '#173D90',
 }
 def setup(app):
   app.add_css_file( "css/custom.css" )
