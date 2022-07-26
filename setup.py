@@ -7,7 +7,7 @@ setup(
     name="vinal",
     version="0.0.2",
     author="Henry Robbins",
-    author_email="hwr26@cornell.edu",
+    author_email="hw.robbins@gmail.com",
     description="A Python package for visualizing graph algorithms.",
     long_description=long_description,
     long_description_content_type="text/markdown",
