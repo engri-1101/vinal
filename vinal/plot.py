@@ -647,7 +647,7 @@ def _graph_iterations_plot(G:nx.Graph,
         plot.multi_line(xs='swaps_after_x', ys='swaps_after_y',
                         line_color=SECONDARY_COLOR, line_width=LINE_WIDTH,
                         line_cap='round', level=EDGE_LEVEL,
-                        line_dash=[10,12], source=swaps_src)
+                        line_dash='dashed', source=swaps_src)
         args_dict['swaps_src'] = swaps_src
 
     source = ColumnDataSource(data=source_data)
