@@ -440,8 +440,6 @@ def _get_grid(plot:figure,
     """
     return gridplot([[plot],
                      [row(cost,error_msg,clicked)]],
-                    width=plot.width,
-                    height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
@@ -491,7 +489,6 @@ def _graph_plot(G:nx.Graph,
                              renderers=[nodes_glyph]))
     grid = gridplot([[plot],
                      [row(cost)]],
-                    width=plot.width, height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
@@ -685,8 +682,6 @@ def _graph_iterations_plot(G:nx.Graph,
         layout.insert(1, [table])
 
     grid = gridplot(layout,
-                    width=plot.width,
-                    height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
@@ -924,8 +919,6 @@ def assisted_dijkstras_plot(G, s=0, **kw) -> GridBox:
     grid = gridplot([[plot],
                      [table],
                      [row(error_msg)]],
-                    width=plot.width,
-                    height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
