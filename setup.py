@@ -16,10 +16,9 @@ setup(
     include_package_data=True,
     license="Creative Commons Attribution-NonCommercial-ShareAlike 4.0. https://creativecommons.org/licenses/by-nc-sa/4.0/",
     classifiers=[
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Operating System :: OS Independent",
     ],
     install_requires=[
@@ -29,5 +28,5 @@ setup(
         'bokeh>=3',
         'typing>=3.7',
     ],
-    python_requires='>=3.5',
+    python_requires='>=3.8',
 )
