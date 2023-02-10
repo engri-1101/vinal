@@ -110,7 +110,7 @@ def _blank_plot(G:nx.Graph,
         image (str, optional): Path to image file. Defaults to None.
 
     Returns:
-        Figure: Blank bokeh plot.
+        figure: Blank bokeh plot.
     """
     if x_range is not None and y_range is not None:
         min_x, max_x = x_range
@@ -149,7 +149,7 @@ def _add_image(plot:figure, image:str):
     """Add an image to the background of the plot.
 
     Args:
-        plot (Figure): Plot to add this image to.
+        plot (figure): Plot to add this image to.
         image (str): Path to image.
     """
     plot.image_url(url=[image],
@@ -430,7 +430,7 @@ def _get_grid(plot:figure,
     """Return a grid containing the given plot and divs
 
     Args:
-        plot (Figure): The plot to be in the grid.
+        plot (figure): The plot to be in the grid.
         cost_text (Div): Current cost of solution.
         error_msg (Div): Error message.
         clicked_text (Div): Clicked objects.
