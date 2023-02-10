@@ -92,11 +92,10 @@ def grid_instance(n:int, m:int, manhattan:bool = False) -> nx.Graph:
     Returns:
         nx.Graph: Graph of n x m inter-connected nodes.
     """
-    nodes = pd.DataFrame()
+    nodes = []
     for i in range(n):
         for j in range(m):
-            nodes = nodes.append({'name': str((i,j)),
-                                  'x': i,
-                                  'y': j}, ignore_index=True)
+            nodes.append({'name': str((i,j)), 'x': i, 'y': j})
+    nodes = pd.DataFrame.from_records(nodes)
 
     return create_network(nodes, directed=False, manhattan=manhattan)
