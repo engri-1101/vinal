@@ -623,7 +623,7 @@ def _graph_iterations_plot(G:nx.Graph,
         table = DataTable(source=table_src, columns=columns, height=80,
                           background='white', index_position=None,
                           editable=False, reorderable=False, sortable=False,
-                          selectable=False)
+                          selectable=False, width=plot.width)
         args_dict['table_src'] = table_src
 
     if swaps is not None:
@@ -904,7 +904,8 @@ def assisted_dijkstras_plot(G, s=0, **kw) -> GridBox:
         columns.append(TableColumn(field=str(i), title=str(i)))
     table = DataTable(source=table_src, columns=columns, height=80,
                       background='white', index_position=None, editable=False,
-                      reorderable=False, sortable=False, selectable=False)
+                      reorderable=False, sortable=False, selectable=False,
+                      width=plot.width)
 
     on_click = PLOT_CREATE_JS + 'check_done()\nload_data()\ndijkstras()\n'
 
