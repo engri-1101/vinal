@@ -26,7 +26,7 @@ setup(
         'numpy>=1.19',
         'pandas>=1.1',
         'networkx>=3',
-        'bokeh>=2.2',
+        'bokeh>=3',
         'typing>=3.7',
     ],
     python_requires='>=3.5',

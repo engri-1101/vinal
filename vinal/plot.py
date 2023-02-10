@@ -20,7 +20,7 @@ from typing import List, Tuple, Dict, Union
 from .algorithms import (dijkstras, prims, kruskals, reverse_kruskals,
                          spanning_tree_cost, neighbor, insertion, two_opt,
                          tour_cost)
-from bokeh.plotting import figure, Figure
+from bokeh.plotting import figure
 from bokeh.models.widgets.markups import Div
 from bokeh.models.widgets.tables import TableColumn, DataTable
 from bokeh.models.renderers import GlyphRenderer
@@ -94,7 +94,7 @@ def _blank_plot(G:nx.Graph,
                 height:int = None,
                 x_range:List[float] = None,
                 y_range:List[float] = None,
-                image:str = None, **kw) -> Figure:
+                image:str = None, **kw) -> figure:
     """Return a blank bokeh plot.
 
     The x and y axis ranges are chosen from x_range and y_range first. If one
@@ -127,8 +127,8 @@ def _blank_plot(G:nx.Graph,
     plot = figure(x_range=(min_x, max_x),
                   y_range=(min_y, max_y),
                   title="",
-                  plot_width=400 if width is None else width,
-                  plot_height=400 if height is None else height)
+                  width=400 if width is None else width,
+                  height=400 if height is None else height)
     plot.toolbar.logo = None
     plot.toolbar_location = None
     plot.xgrid.grid_line_color = None
@@ -145,7 +145,7 @@ def _blank_plot(G:nx.Graph,
     return plot
 
 
-def _add_image(plot:Figure, image:str):
+def _add_image(plot:figure, image:str):
     """Add an image to the background of the plot.
 
     Args:
@@ -234,7 +234,7 @@ def _set_graph_colors(G:nx.Graph):
 
 
 def _add_nodes(G:nx.Graph,
-               plot:Figure) -> Union[ColumnDataSource, GlyphRenderer]:
+               plot:figure) -> Union[ColumnDataSource, GlyphRenderer]:
     """Add nodes from G to the plot.
 
     Args:
@@ -257,7 +257,7 @@ def _add_nodes(G:nx.Graph,
 
 
 def _add_edges(G:nx.Graph,
-               plot:Figure,
+               plot:figure,
                show_labels:bool = True,
                hover_line_color:str = TERTIARY_DARK_COLOR
                ) -> Union[ColumnDataSource, GlyphRenderer]:
@@ -293,12 +293,12 @@ def _add_edges(G:nx.Graph,
     return edges_src, edges_glyph
 
 
-def _add_labels(G:nx.Graph, plot:Figure):
+def _add_labels(G:nx.Graph, plot:figure):
     """Add labels from G to the plot.
 
     Args:
         G (nx.Graph): Networkx graph.
-        plot (Figure): Plot to add the labels to.
+        plot (figure): Plot to add the labels to.
     """
     text = [round(w,2) for w in nx.get_edge_attributes(G,'weight').values()]
     xs = np.array(list(nx.get_edge_attributes(G, 'xs').values()))
@@ -308,8 +308,8 @@ def _add_labels(G:nx.Graph, plot:Figure):
     y_range = (plot.y_range.end - plot.y_range.start)
     margin_shift_x = (x_range / (2 * PLOT_MARGIN + 1)) * PLOT_MARGIN
     margin_shift_y = (y_range / (2 * PLOT_MARGIN + 1)) * PLOT_MARGIN
-    x_scale = plot.plot_width / x_range
-    y_scale = plot.plot_height / y_range
+    x_scale = plot.width / x_range
+    y_scale = plot.height / y_range
 
     xs = (xs + margin_shift_x - plot.x_range.start) * x_scale
     ys = (ys + margin_shift_y - plot.y_range.start) * y_scale
@@ -343,19 +343,19 @@ def _add_labels(G:nx.Graph, plot:Figure):
     plot.add_layout(labels)
 
 
-def _get_create_divs(plot:Figure,
+def _get_create_divs(plot:figure,
                      cost_txt:str = '0.0',
                      click_txt:str = '[]') -> Tuple[Div]:
     """Return the Divs shown by plots in which a tour or tree is created.
 
     Args:
-        plot (Figure): The plot to which these Divs are added.
+        plot (figure): The plot to which these Divs are added.
         cost_text (str, optional): Current cost of solution. Defaults to '0.0'.
         clicked_text (str, optional): Clicked objects. Defaults to '[]'.
     """
-    cost = Div(text=cost_txt, width=int(plot.plot_width/3), align='center')
-    clicked = Div(text=click_txt, width=int(plot.plot_width/3), align='center')
-    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
+    cost = Div(text=cost_txt, width=int(plot.width/3), align='center')
+    clicked = Div(text=click_txt, width=int(plot.width/3), align='center')
+    error_msg = Div(text='', width=int(plot.width/3), align='center')
     return (cost, clicked, error_msg)
 
 
@@ -398,14 +398,14 @@ def _edge_src_maps(G:nx.Graph,
     return edge_ids.tolist(), G_matrix.tolist()
 
 
-def _add_tools(plot:Figure,
+def _add_tools(plot:figure,
                on_click:str,
                nodes_glyph:GlyphRenderer,
                renderer:GlyphRenderer, **kw):
     """Add hover and tap tools to the plot.
 
     Args:
-        plot (Figure): Plot to add these tools to.
+        plot (figure): Plot to add these tools to.
         on_click (str): JS code to be run when the renderer is clicked.
         nodes_glyph (GlyphRenderer): Glyph for the nodes on this plot.
         renderer (GlyphRenderer): Renderer that should call on_click code.
@@ -423,7 +423,7 @@ def _add_tools(plot:Figure,
                            renderers=[renderer]))
 
 
-def _get_grid(plot:Figure,
+def _get_grid(plot:figure,
               cost:Div,
               error_msg:Div,
               clicked:Div) -> GridBox:
@@ -440,8 +440,8 @@ def _get_grid(plot:Figure,
     """
     return gridplot([[plot],
                      [row(cost,error_msg,clicked)]],
-                    plot_width=plot.plot_width,
-                    plot_height=plot.plot_height,
+                    width=plot.width,
+                    height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
@@ -484,14 +484,14 @@ def _graph_plot(G:nx.Graph,
                         line_color=TERTIARY_DARK_COLOR, level=EDGE_LEVEL)
 
     cost_txt = '' if cost is None else ('%.1f' % cost)
-    cost = Div(text=cost_txt, width=int(plot.plot_width/2), align='center')
+    cost = Div(text=cost_txt, width=int(plot.width/2), align='center')
 
     plot.add_tools(HoverTool(tooltips=[("Index", "$index"),
                                        ("Name", "@name")],
                              renderers=[nodes_glyph]))
     grid = gridplot([[plot],
                      [row(cost)]],
-                    plot_width=plot.plot_width, plot_height=plot.plot_height,
+                    width=plot.width, height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
@@ -579,17 +579,17 @@ def _graph_iterations_plot(G:nx.Graph,
         edges_src, edges_glyph = _add_edges(G, plot, show_labels=show_labels)
 
     # current iteration
-    n = Div(text='0', width=plot.plot_width, align='center')
+    n = Div(text='0', width=plot.width, align='center')
     args_dict['n'] = n
 
     # total number of iterations
     features = [edges, nodes, costs, tables, swaps]
     k = max([0 if feature is None else len(feature) for feature in features])
-    k = Div(text=str(k), width=plot.plot_width, align='center')
+    k = Div(text=str(k), width=plot.width, align='center')
     args_dict['k'] = k
 
     # indicate if on final iteration
-    done = Div(text='', width=int(plot.plot_width/2), align='center')
+    done = Div(text='', width=int(plot.width/2), align='center')
     args_dict['done'] = done
 
     source_data = {}
@@ -612,7 +612,7 @@ def _graph_iterations_plot(G:nx.Graph,
     if costs is not None:
         source_data['costs'] = costs
         cost = Div(text=str(costs[0]),
-                   width=int(plot.plot_width/2),
+                   width=int(plot.width/2),
                    align='center')
         args_dict['cost'] = cost
 
@@ -624,8 +624,8 @@ def _graph_iterations_plot(G:nx.Graph,
         for i in range(len(tables[0])-1):
             columns.append(TableColumn(field=str(i), title=str(i)))
         table = DataTable(source=table_src, columns=columns, height=80,
-                          width_policy='fit', max_width=plot.plot_width,
-                          width=plot.plot_width, background='white',
+                          width_policy='fit', max_width=plot.width,
+                          width=plot.width, background='white',
                           index_position=None, editable=False,
                           reorderable=False, sortable=False, selectable=False)
         args_dict['table_src'] = table_src
@@ -664,11 +664,11 @@ def _graph_iterations_plot(G:nx.Graph,
 
     # buttons
     next_button = Button(label="Next", button_type="primary",
-                         max_width=int(plot.plot_width/2),
+                         max_width=int(plot.width/2),
                          width_policy='fit', sizing_mode='stretch_width')
     next_button.js_on_click(CustomJS(args=args_dict, code=next_btn_code))
     prev_button = Button(label="Previous", button_type="primary",
-                         max_width=int(plot.plot_width/2),
+                         max_width=int(plot.width/2),
                          width_policy='fit', sizing_mode='stretch_width')
     prev_button.js_on_click(CustomJS(args=args_dict, code=prev_btn_code))
 
@@ -679,14 +679,14 @@ def _graph_iterations_plot(G:nx.Graph,
     # create layout
     layout = [[plot],
               [row(prev_button, next_button,
-                   max_width=plot.plot_width, sizing_mode='stretch_both')],
+                   max_width=plot.width, sizing_mode='stretch_both')],
               [row(cost, done) if costs else row(done)]]
     if tables is not None:
         layout.insert(1, [table])
 
     grid = gridplot(layout,
-                    plot_width=plot.plot_width,
-                    plot_height=plot.plot_height,
+                    width=plot.width,
+                    height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
@@ -898,7 +898,7 @@ def assisted_dijkstras_plot(G, s=0, **kw) -> GridBox:
         warnings.simplefilter("ignore")
         source = ColumnDataSource(data=src_data)
 
-    error_msg = Div(text='', width=int(plot.plot_width/3), align='center')
+    error_msg = Div(text='', width=int(plot.width/3), align='center')
 
     table_data = {str(i): ['inf', '-'] for i in range(len(G))}
     table_data['index'] = ['label', 'prev']
@@ -909,8 +909,8 @@ def assisted_dijkstras_plot(G, s=0, **kw) -> GridBox:
     for i in range(len(G)):
         columns.append(TableColumn(field=str(i), title=str(i)))
     table = DataTable(source=table_src, columns=columns, height=80,
-                      width_policy='fit', max_width=plot.plot_width,
-                      width=plot.plot_width, background='white',
+                      width_policy='fit', max_width=plot.width,
+                      width=plot.width, background='white',
                       index_position=None, editable=False,
                       reorderable=False, sortable=False, selectable=False)
 
@@ -924,8 +924,8 @@ def assisted_dijkstras_plot(G, s=0, **kw) -> GridBox:
     grid = gridplot([[plot],
                      [table],
                      [row(error_msg)]],
-                    plot_width=plot.plot_width,
-                    plot_height=plot.plot_height,
+                    width=plot.width,
+                    height=plot.height,
                     toolbar_location=None,
                     toolbar_options={'logo': None})
 
