@@ -77,6 +77,8 @@ def create_network(nodes:pd.DataFrame,
                                                    create_using=graph_type)
     for attr in nodes.columns:
         nx.set_node_attributes(G, pd.Series(nodes[attr]).to_dict(), attr)
+    name = nodes.apply(lambda n: f"({n.x}, {n.y})", axis=1).to_dict()
+    nx.set_node_attributes(G, name, "name")
 
     return G
 
