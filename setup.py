@@ -23,7 +23,7 @@ setup(
     ],
     install_requires=[
         'numpy>=1.19',
-        'pandas>=1.1',
+        'pandas>=1.2',
         'networkx>=3',
         'bokeh>=3',
         'typing>=3.7',
