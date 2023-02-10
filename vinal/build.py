@@ -68,7 +68,7 @@ def create_network(nodes:pd.DataFrame,
     graph_type = nx.DiGraph if directed else nx.Graph
     if edges is None:
         A = distance_matrix(nodes, manhattan=manhattan, **kw)
-        G = nx.convert_matrix.from_numpy_matrix(A=A, create_using=graph_type)
+        G = nx.from_numpy_array(A=A, create_using=graph_type)
     else:
         G = nx.convert_matrix.from_pandas_edgelist(df=edges,
                                                    source='u',
