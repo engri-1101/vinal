@@ -152,12 +152,20 @@ def _add_image(plot:figure, image:str):
         plot (figure): Plot to add this image to.
         image (str): Path to image.
     """
-    plot.image_url(url=[image],
-                   x=plot.x_range.start,
-                   y=plot.y_range.end,
-                   w=plot.x_range.end - plot.x_range.start,
-                   h=plot.y_range.end - plot.y_range.start,
-                   level=IMAGE_LEVEL)
+    im = Image.open(image).convert('RGBA')
+    xdim, ydim = im.size
+
+    img = np.empty((ydim, xdim), dtype=np.uint32)
+    view = img.view(dtype=np.uint8).reshape((ydim, xdim, 4))
+
+    view[:,:,:] = np.flipud(np.asarray(im))
+
+    plot.image_rgba(image=[img],
+                    x=plot.x_range.start,
+                    y=plot.y_range.start,
+                    dw=plot.x_range.end - plot.x_range.start,
+                    dh=plot.y_range.end - plot.y_range.start,
+                    level="image")
 
 
 def _edge_positions(G:nx.Graph,
