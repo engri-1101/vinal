@@ -4,3 +4,4 @@ networkx==3.0
 bokeh==3.0.3
 ortools==9.5.2237
 typing==3.7.4.3
+sphinx_rtd_theme==1.0.0
