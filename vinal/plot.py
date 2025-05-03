@@ -255,7 +255,7 @@ def _add_nodes(G:nx.Graph,
     nodes_df = pd.DataFrame([G.nodes[u] for u in sorted(G.nodes())])
     nodes_src = ColumnDataSource(data=nodes_df.to_dict(orient='list'))
 
-    nodes_glyph = plot.circle(x='x', y='y', size=NODE_SIZE, level=NODE_LEVEL,
+    nodes_glyph = plot.scatter(x='x', y='y', size=NODE_SIZE, level=NODE_LEVEL,
                               line_color='line_color', fill_color='fill_color',
                               line_width='line_width',
                               nonselection_fill_alpha=1,
