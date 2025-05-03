@@ -286,7 +286,7 @@ function tree_update() {
  * Check if user-selected node is valid and add to tour if valid.
  */
 function create_tour_on_click () {
-    var v = source.data['last_index']
+    var v = cb_data.source.selected.indices[0]
     var n = nodes_src.data['line_color'].length
     var tour = source.data['clicked']
 
